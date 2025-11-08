@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { auth } from "../../firebaseConfig";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
+
 
 export default function AuthLogin() {
   const [email, setEmail] = useState("");
@@ -9,13 +11,17 @@ export default function AuthLogin() {
   const [erro, setErro] = useState("");
   const [user, setUser] = useState(null);
 
+  const navigate = useNavigate();
+
   // 🔹 Monitora se o usuário está logado (executa 1x ao iniciar)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => { 
+      setUser(currentUser); // atualiza o estado do usuário 
     });
     return () => unsubscribe(); // limpa o listener ao desmontar
   }, []);
+
+  
 
   // 🔹 Função de login
   const handleLogin = async (e) => {
@@ -30,7 +36,16 @@ export default function AuthLogin() {
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       console.log("Usuário logado:", userCredential.user);
       setErro("");
-      // Aqui você pode redirecionar dependendo do tipoUsuario
+      localStorage.setItem("tipoUsuario", tipoUsuario);
+      if (tipoUsuario === "gestor"){
+        navigate("/gestor");
+        console.log("Redirecionar para área do gestor"); 
+      }
+      else {
+        navigate("/tecnico");
+        console.log("Redirecionar para área do técnico");
+      }
+      
       // Exemplo: if (tipoUsuario === "gestor") navigate("/dashboardGestor")
     } catch (error) {
       if (error.code === "auth/user-not-found") {
@@ -63,7 +78,7 @@ export default function AuthLogin() {
             type="password"
             placeholder="Senha"
             value={senha}
-            onChange={(e) => setSenha(e.target.value)}
+            onChange={(e) => setSenha(e.target.value)} // atualiza o estado da senha
             className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-400"
           />
 
