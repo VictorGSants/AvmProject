@@ -37,6 +37,7 @@ export default function AuthLogin() {
       console.log("Usuário logado:", userCredential.user);
       setErro("");
       localStorage.setItem("tipoUsuario", tipoUsuario);
+      localStorage.setItem("email", email)
       if (tipoUsuario === "gestor"){
         navigate("/gestor");
         console.log("Redirecionar para área do gestor"); 
