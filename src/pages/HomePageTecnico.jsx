@@ -1,16 +1,19 @@
 import React from 'react';
 import Header from '../components/Header';
-export default function HomePageTecnico() {
+import Card from '../components/Card';
+
+
+
+export default function HomePageGestor() {
+  
+
+   
 
   return (
-    <div>
-        <Header>
-          <main className='p-6'>
-            <h2>Area do Tecnico</h2>
-            <p className='text-2xl font-semibold'>Aqui ficarão as ordens de serviço designadas a você.</p>
-          </main>
-        </Header>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      <Header title="Painel do Tecnico" />
+      <Card title="Card tecnico"/>
+      
     </div>
   );
-};
-
+}
