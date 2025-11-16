@@ -1,4 +1,4 @@
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, addDoc } from "firebase/firestore";
 import { db } from "/firebaseConfig";
 import { useEffect, useState } from "react";
 import Header from '../components/Header';
@@ -72,7 +72,8 @@ export default function NovaOs() {
     console.log("OS criada:", novaOS);
 
     // Exemplo: salvar no Firestore
-    // const docRef = await addDoc(collection(db, "ordens"), novaOS);
+    const docRef = await addDoc(collection(db, "ordens"), novaOS);
+    docRef();
 
     alert("OS criada com sucesso!");
     setModalAberto(false);
