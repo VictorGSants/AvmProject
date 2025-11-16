@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { PlusCircle, UserPlus, List, ClipboardList, CalendarCheck } from "lucide-react";
+import { PlusCircle, UserPlus, List, ClipboardList, CalendarCheck, AirVentIcon } from "lucide-react";
+import { ArchiveBoxArrowDownIcon } from "@heroicons/react/16/solid";
 
 export default function Card() {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ export default function Card() {
             <div className="min-h-screen bg-gray-100 flex flex-col">
                 <main className="flex-grow p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <CardItem title="Criar Nova OS" icon={PlusCircle} path="/gestor/novaOs" />
-                    <CardItem title="Cadastrar Técnico" icon={UserPlus} path="/gestor/cadastrarTecnico" />
+                    <CardItem title="Cadastrar Equipamento" icon={AirVentIcon} path="/gestor/cadastrarEquipamento" />
                     <CardItem title="Ver OS" icon={List} path="/gestor/verOsGestor" />
                     <CardItem title="PMOC" icon={ClipboardList} path="/gestor/pmoc" />
                 </main>

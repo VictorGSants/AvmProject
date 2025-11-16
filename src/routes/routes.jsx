@@ -8,7 +8,7 @@ import NovaOs from "../pages/NovaOs";
 import AgendaTecnico from "../pages/Agenda";
 import VerOsTecnico from "../pages/VerOsTecnico";
 import PmocTecnico from "../pages/PmocTecnico";
-import CadastrarTecnico from "../pages/cadastrarTecnico";
+import CadastrarEquipamento from "../pages/CadastrarEquipamento"
 import VerOsGestor from "../pages/VerOsGestor";
 import PmocGestor from "../pages/PmocGestor";
 
@@ -31,13 +31,13 @@ export default function RouterApp() {
           </ProtectedRoutes>}>
         </Route>
 
-        <Route path="/gestor/cadastrarTecnico" element={    
+        <Route path="/gestor/cadastrarEquipamento" element={    
           <ProtectedRoutes>
-            <CadastrarTecnico/>
+            <CadastrarEquipamento/>
           </ProtectedRoutes>}>
         </Route>
 
-        <Route path="/gestor/verOsGestor" element={    
+        <Route path="/gestor/verOsGestor/:osId" element={    
           <ProtectedRoutes>
             <VerOsGestor/>
           </ProtectedRoutes>}>
