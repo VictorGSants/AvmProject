@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebaseConfig";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Menu, X } from "lucide-react"; // ícones bonitos e leves
+
 
 export default function Header() {
   const [user] = useAuthState(auth);
@@ -34,6 +35,15 @@ export default function Header() {
             {user.email}
           </span>
         )}
+
+        <Link
+          to="/gestor"
+          className="px-4 py-2 rounded bg-gray-800 text-white hover:bg-gray-900 transition"
+        >
+          Voltar
+        </Link>
+
+
         <button
           onClick={handleLogout}
           className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg text-sm transition"
@@ -65,6 +75,12 @@ export default function Header() {
           >
             Sair
           </button>
+          <Link
+          to="/gestor"
+          className="bg-black text-white py-1 rounded-lg text-sm text-center"
+        >
+          Voltar
+        </Link>
         </div>
       )}
     </header>
@@ -90,6 +106,13 @@ export default function Header() {
           Sair
         </button>
 
+        <Link
+          to="/tecnico"
+          className="bg-black text-white py-1 rounded-lg text-sm text-center"
+        >
+          Voltar
+        </Link>
+
       </div>
 
       {/* Mobile */}
@@ -114,6 +137,13 @@ export default function Header() {
           >
             Sair
           </button>
+
+          <Link
+          to="/tecnico"
+          className="bg-black text-white py-1 rounded-lg text-sm text-center"
+        >
+          Voltar
+        </Link>
         </div>
       )}
     </header>

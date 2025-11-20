@@ -6,7 +6,6 @@ import AuthLogin from "../pages/Login";
 import ProtectedRoutes from "./ProtectecRoutes";
 import NovaOs from "../pages/NovaOs";
 import AgendaTecnico from "../pages/Agenda";
-import VerOsTecnico from "../pages/VerOsTecnico";
 import PmocTecnico from "../pages/PmocTecnico";
 import CadastrarEquipamento from "../pages/CadastrarEquipamento"
 import VerOsGestor from "../pages/VerOsGestor";
@@ -37,7 +36,7 @@ export default function RouterApp() {
           </ProtectedRoutes>}>
         </Route>
 
-        <Route path="/gestor/verOsGestor/:osId" element={    
+        <Route path="/gestor/verOsGestor" element={    
           <ProtectedRoutes>
             <VerOsGestor/>
           </ProtectedRoutes>}>
@@ -63,12 +62,7 @@ export default function RouterApp() {
           </ProtectedRoutes>}>
         </Route>
       
-      <Route path="/tecnico/verOs" element={    
-          <ProtectedRoutes>
-            <VerOsTecnico />
-          </ProtectedRoutes>}>
-        </Route>
-
+    
         <Route path="/tecnico/pmoc" element={    
           <ProtectedRoutes>
             <PmocTecnico />

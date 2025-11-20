@@ -63,6 +63,9 @@ export default function NovaOs() {
       bloco: equipamentoSelecionado.bloco,
       local: equipamentoSelecionado.local,
 
+      tecnicoResponsavel: form.get("tecnicoResponsavel") || null,
+      tipoServico: form.get("tipoServico"),
+      prioridade: form.get("prioridade"),
       data: form.get("data"),
       descricao: form.get("descricao"),
       criadoEm: new Date(),
@@ -72,8 +75,8 @@ export default function NovaOs() {
     console.log("OS criada:", novaOS);
 
     // Exemplo: salvar no Firestore
-    const docRef = await addDoc(collection(db, "ordens"), novaOS);
-    docRef();
+    await addDoc(collection(db, "ordens"), novaOS);
+
 
     alert("OS criada com sucesso!");
     setModalAberto(false);
@@ -94,7 +97,7 @@ export default function NovaOs() {
           key={bloco}
           className="bg-gray-100 p-4 rounded-xl shadow mb-6"
         >
-          <h2 className="text-xl font-semibold mb-3 text-gray-700">
+          <h2 className="text-xl mb-3 text-gray-700 text-center font-bold">
             Bloco {bloco}
           </h2>
 
@@ -111,8 +114,9 @@ export default function NovaOs() {
                   }
                 `}
               >
-                <span className="font-bold text-gray-800">{eq.codigo}</span>
-                <span className="text-gray-600">{eq.nome}</span>
+                <span className="font-bold text-gray-800">{eq.local}</span>
+                <span className="text-gray-600">{eq.nome + " - " + eq.codigo }</span>
+                
               </li>
             ))}
           </ul>
@@ -154,7 +158,7 @@ export default function NovaOs() {
             <form onSubmit={criarOS} className="space-y-4 mt-4">
 
               <div>
-                <label className="font-medium">Data da OS</label>
+                <label className="font-medium">Data Agendamento</label>
                 <input
                   name="data"
                   type="date"
@@ -162,6 +166,41 @@ export default function NovaOs() {
                   required
                 />
               </div>
+
+             <div>
+                <label className="font-medium">Prioridade</label>
+               <select
+                  name="prioridade"
+                  className="
+                    w-full mt-1 px-3 py-2 
+                    border border-gray-300 rounded-lg 
+                    bg-gray-50 text-gray-800 
+                    shadow-sm
+                    focus:outline-none 
+                    focus:ring-2 focus:ring-blue-400 
+                    focus:border-blue-500
+                    transition-all
+                  ">
+                  <option value="baixa">Baixa</option>
+                  <option value="media">Média</option>
+                  <option value="alta">Alta</option>
+                </select>
+              </div>
+                      
+
+              <div>
+                <label className="font-medium">Tipo de Serviço</label>
+                <select
+                  name="tipoServico"
+                  className="w-full mt-1 p-2 border rounded-lg bg-white text-gray-700 
+                            focus:border-blue-500 focus:ring-2 focus:ring-blue-300 transition"
+                >
+                  <option value="instalacao">Instalação</option>
+                  <option value="manutencao">Manutenção</option>
+                  <option value="reparo">Reparo</option>
+                </select>
+              </div>
+
 
               <div>
                 <label className="font-medium">Descrição do Serviço</label>
@@ -173,11 +212,32 @@ export default function NovaOs() {
                 ></textarea>
               </div>
 
+              <div>
+                <label className="font-medium">Técnico Responsável (Opcional)</label>
+                <input
+                    type="text"
+                    name="tecnicoResponsavel"
+                    placeholder="Nome do Técnico"
+                    className="
+                      w-full mt-1 px-3 py-2
+                      border border-gray-300 rounded-lg
+                      bg-gray-50 text-gray-800
+                      shadow-sm
+                      placeholder:text-gray-400
+                      focus:outline-none
+                      focus:ring-2 focus:ring-blue-400 
+                      focus:border-blue-500
+                      transition-all
+                    "
+                  />
+              </div>
+
+
               <button
                 type="submit"
                 className="w-full bg-blue-600 p-3 rounded-lg text-white font-bold hover:bg-blue-700"
               >
-                Criar OS
+                Criar Ordem
               </button>
             </form>
 
