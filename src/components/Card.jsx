@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { PlusCircle, UserPlus, List, ClipboardList, CalendarCheck, AirVentIcon } from "lucide-react";
+import { PlusCircle, UserPlus, List, ClipboardList, CalendarCheck, AirVentIcon, Pen, PenBox } from "lucide-react";
 import { ArchiveBoxArrowDownIcon } from "@heroicons/react/16/solid";
 
 export default function Card() {
@@ -28,6 +28,7 @@ export default function Card() {
                     <CardItem title="Cadastrar Equipamento" icon={AirVentIcon} path="/gestor/cadastrarEquipamento" />
                     <CardItem title="Ver OS" icon={List} path="/gestor/verOsGestor" />
                     <CardItem title="PMOC" icon={ClipboardList} path="/gestor/pmoc" />
+                     <CardItem title="Editar Registro de Equipamento" icon={PenBox} path="/gestor/EditarEquip" />
                 </main>
             </div>  
   )

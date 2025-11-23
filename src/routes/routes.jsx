@@ -10,6 +10,7 @@ import PmocTecnico from "../pages/PmocTecnico";
 import CadastrarEquipamento from "../pages/CadastrarEquipamento"
 import VerOsGestor from "../pages/VerOsGestor";
 import PmocGestor from "../pages/PmocGestor";
+import EditarEquip from "../pages/EditarEquip";
 
 export default function RouterApp() {
   return (
@@ -33,6 +34,12 @@ export default function RouterApp() {
         <Route path="/gestor/cadastrarEquipamento" element={    
           <ProtectedRoutes>
             <CadastrarEquipamento/>
+          </ProtectedRoutes>}>
+        </Route>
+
+        <Route path="/gestor/EditarEquip" element={    
+          <ProtectedRoutes>
+            <EditarEquip />
           </ProtectedRoutes>}>
         </Route>
 
