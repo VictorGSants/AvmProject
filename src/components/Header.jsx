@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signOut } from "firebase/auth";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { Menu, X } from "lucide-react"; // ícones bonitos e leves
+import { doc, getDoc } from "firebase/firestore";
 
 
 export default function Header() {
@@ -20,6 +21,22 @@ export default function Header() {
     }
   };
 
+  const [nome, setNome] = useState("");
+
+  useEffect(()=> {
+    async function buscarNome() {
+      if (!user) return;
+      
+      const ref = doc(db, "usuarios", user.uid);
+      const snap = await getDoc(ref);
+
+      if (snap.exists) {
+        setNome(snap.data().nome)
+      }
+    }
+    buscarNome();
+  }, [user]);
+
   if (tipoUsuario == "gestor") {
     
     return (
@@ -29,12 +46,14 @@ export default function Header() {
       
 
       {/* Desktop */}
-      <div className="hidden sm:flex items-center space-x-4">
-        {user && (
+      {user && (
           <span className="text-sm truncate max-w-[150px]">
-            {user.email}
+           <strong> {"Bem vindo, " + nome}</strong>
           </span>
         )}
+
+      <div className="hidden sm:flex items-center space-x-4">
+        
 
         <Link
           to="/gestor"
@@ -54,6 +73,8 @@ export default function Header() {
       </div>
 
       {/* Mobile */}
+
+      
       <button
         className="sm:hidden"
         onClick={() => setMenuAberto(!menuAberto)}
@@ -91,14 +112,15 @@ export default function Header() {
       {/* Título */}
       <button className="text-lg sm:text-xl font-bold" onClick={() => navigate("/tecnico")}>Sistema AVM</button>
       
+      {user && (
+          <span className="text-sm truncate max-w-[150px]">
+           <strong> {"Bem vindo, " + nome}</strong>
+          </span>
+        )}
 
       {/* Desktop */}
       <div className="hidden sm:flex items-center space-x-4">
-        {user && (
-          <span className="text-sm truncate max-w-[150px]">
-            {user.email}
-          </span>
-        )}
+        
         <button
           onClick={handleLogout}
           className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded-lg text-sm transition"

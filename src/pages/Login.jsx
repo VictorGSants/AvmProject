@@ -34,17 +34,11 @@ export default function AuthLogin() {
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
-      console.log("Usuário logado:", userCredential.user);
+      const loggedUser = userCredential.user;
+      console.log("Usuário logado:", loggedUser);
       setErro("");
 
-      if (!user) {
-         setErro("Erro inesperado ao carregar usuário.");
-        return;
-      
-      }
-
-
-      const ref = doc(db, "usuarios", user.uid);
+      const ref = doc(db, "usuarios", loggedUser.uid);
       const snap = await getDoc(ref);
 
       if (!snap.exists()){
@@ -53,7 +47,6 @@ export default function AuthLogin() {
       }
 
       const tipo = await snap.data().tipo;
-
 
       localStorage.setItem("tipoUsuario", tipo);
       localStorage.setItem("email", email)
