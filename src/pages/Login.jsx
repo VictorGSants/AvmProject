@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { auth } from "../../firebaseConfig";
+import { auth, db } from "../../firebaseConfig";
 import { signInWithEmailAndPassword, onAuthStateChanged } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
 
 
 export default function AuthLogin() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [tipoUsuario, setTipoUsuario] = useState("gestor");
   const [erro, setErro] = useState("");
   const [user, setUser] = useState(null);
 
@@ -36,18 +36,40 @@ export default function AuthLogin() {
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
       console.log("Usuário logado:", userCredential.user);
       setErro("");
-      localStorage.setItem("tipoUsuario", tipoUsuario);
+
+      if (!user) {
+         setErro("Erro inesperado ao carregar usuário.");
+        return;
+      
+      }
+
+
+      const ref = doc(db, "usuarios", user.uid);
+      const snap = await getDoc(ref);
+
+      if (!snap.exists()){
+        setErro("Usuario nao encontrado")
+        return;
+      }
+
+      const tipo = await snap.data().tipo;
+
+
+      localStorage.setItem("tipoUsuario", tipo);
       localStorage.setItem("email", email)
-      if (tipoUsuario === "gestor"){
+
+      if (tipo === "gestor"){
         navigate("/gestor");
         console.log("Redirecionar para área do gestor"); 
+        console.log("Bem vindo ! " + snap.data().nome)
       }
       else {
         navigate("/tecnico");
         console.log("Redirecionar para área do técnico");
+        console.log("Bem vindo ! " + snap.data().nome)
       }
       
-      // Exemplo: if (tipoUsuario === "gestor") navigate("/dashboardGestor")
+      
     } catch (error) {
       if (error.code === "auth/user-not-found") {
         setErro("Usuário não encontrado. Verifique o e-mail e a senha.");
@@ -83,29 +105,7 @@ export default function AuthLogin() {
             className="w-full border rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-400"
           />
 
-          <div className="flex justify-between items-center">
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="tipo"
-                value="gestor"
-                checked={tipoUsuario === "gestor"}
-                onChange={(e) => setTipoUsuario(e.target.value)}
-              />
-              <span>Gestor</span>
-            </label>
-
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="tipo"
-                value="tecnico"
-                checked={tipoUsuario === "tecnico"}
-                onChange={(e) => setTipoUsuario(e.target.value)}
-              />
-              <span>Técnico</span>
-            </label>
-          </div>
+        
 
           {erro && <p className="text-red-500 text-sm">{erro}</p>}
 

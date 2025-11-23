@@ -175,6 +175,7 @@ export default function OsConcluidas() {
               <p>
                 <strong>Equipamento:</strong> {detalhes.nomeEquipamento}
               </p>
+              <br />
             </div>
 
             <button
