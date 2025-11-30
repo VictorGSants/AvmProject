@@ -1,7 +1,5 @@
-# Firebase configs (NÃO SUBIR PARA O GIT)
-firebaseConfig.dev.js
-firebaseConfig.prod.js
-firebaseEnv.js
+
+
 
 # Variáveis de ambiente
 .env
