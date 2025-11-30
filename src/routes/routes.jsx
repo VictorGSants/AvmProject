@@ -8,9 +8,10 @@ import NovaOs from "../pages/NovaOs";
 import AgendaTecnico from "../pages/Agenda";
 import PmocTecnico from "../pages/PmocTecnico";
 import CadastrarEquipamento from "../pages/CadastrarEquipamento"
-import VerOsGestor from "../pages/VerOsGestor";
 import PmocGestor from "../pages/PmocGestor";
 import EditarEquip from "../pages/EditarEquip";
+import MapaHospital from "../pages/mapaHospital";
+import HistoricoDeManutencoes from "../pages/HistoricoDeManutencoes";
 
 export default function RouterApp() {
   return (
@@ -43,11 +44,16 @@ export default function RouterApp() {
           </ProtectedRoutes>}>
         </Route>
 
-        <Route path="/gestor/verOsGestor" element={    
-          <ProtectedRoutes>
-            <VerOsGestor/>
-          </ProtectedRoutes>}>
-        </Route>
+        <Route
+          path="/gestor/historicoDeManutencoes"
+          element={
+            <ProtectedRoutes>
+              <HistoricoDeManutencoes />
+            </ProtectedRoutes>
+          }
+        />
+
+
         
         <Route path="/gestor/pmoc" element={    
           <ProtectedRoutes>
@@ -55,6 +61,11 @@ export default function RouterApp() {
           </ProtectedRoutes>}>
         </Route>
 
+        <Route path="/mapaHospital" element={    
+          <ProtectedRoutes>
+            <MapaHospital/>
+          </ProtectedRoutes>}>
+        </Route>
 
         <Route path="/tecnico" element={
           <ProtectedRoutes>

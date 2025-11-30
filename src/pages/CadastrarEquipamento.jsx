@@ -21,6 +21,7 @@ export default function RegistrarEquipamento() {
       modelo: form.get("modelo"),
       btus: form.get("btus"),
       criadoEm: new Date(),
+      status: form.get("status")
     };
 
     try {
@@ -105,7 +106,16 @@ export default function RegistrarEquipamento() {
           <label className="font-semibold">BTUs</label>
           <input
             name="btus"
-            type="number"
+            type="text"
+            className="w-full p-2 border rounded"
+          />
+        </div>
+
+        <div>
+          <label className="font-semibold">Status: </label>
+          <input
+            name="status"
+            type="text"
             className="w-full p-2 border rounded"
           />
         </div>

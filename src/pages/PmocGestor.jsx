@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { collection, getDocs, updateDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  getDoc,
+  addDoc,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "/firebaseConfig";
 import Header from "../components/Header";
 
@@ -7,10 +15,11 @@ export default function RegistrarPmoc() {
   const [equipamentosPorBloco, setEquipamentosPorBloco] = useState({});
   const [modalAberto, setModalAberto] = useState(false);
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
+  const [descricao, setDescricao] = useState("");
 
-  // ---------------------------------------------
-  // CARREGAR TODOS OS EQUIPAMENTOS
-  // ---------------------------------------------
+  // ------------------------------
+  // CARREGA EQUIPAMENTOS POR BLOCO
+  // ------------------------------
   useEffect(() => {
     async function carregarEquipamentos() {
       const snapshot = await getDocs(collection(db, "equipamentos"));
@@ -29,11 +38,12 @@ export default function RegistrarPmoc() {
           local: dados.local || "",
           fabricante: dados.fabricante || "",
           modelo: dados.modelo || "",
-          btu: dados.btu || "",
+          btus: dados.btus || "",
           statusPMOC: dados.statusPMOC || "pendente",
           ultimaManutencao: dados.ultimaManutencao
             ? new Date(dados.ultimaManutencao.toDate())
             : null,
+          bloco,
         });
       });
 
@@ -43,48 +53,88 @@ export default function RegistrarPmoc() {
     carregarEquipamentos();
   }, []);
 
-  // ---------------------------------------------
-  // FUNÇÃO: MARCAR PMOC FEITO
-  // ---------------------------------------------
+  // ------------------------------
+  // SALVAR MANUTENÇÃO NA SUBCOLEÇÃO
+  // ------------------------------
+  async function registrarManutencaoSubcolecao() {
+    await addDoc(
+      collection(db, "equipamentos", equipamentoSelecionado.id, "manutencoes"),
+      {
+        descricao,
+        data: serverTimestamp(),
+        criadoEm: serverTimestamp(),
+        tipo: "PMOC",
+      }
+    );
+  }
+
+  // ------------------------------
+  // MARCAR PMOC + ATUALIZAR EQUIPAMENTO
+  // ------------------------------
   async function marcarPmoc() {
     if (!equipamentoSelecionado) return;
 
-    await updateDoc(doc(db, "equipamentos", equipamentoSelecionado.id), {
-      statusPMOC: "feito",
-      ultimaManutencao: new Date(),
-    });
+    try {
+      // 1️⃣ salva manutenção em subcoleção
+      await registrarManutencaoSubcolecao();
 
-    alert("PMOC registrado com sucesso!");
+      // 2️⃣ atualiza status e última manutenção
+      await updateDoc(doc(db, "equipamentos", equipamentoSelecionado.id), {
+        statusPMOC: "feito",
+        ultimaManutencao: serverTimestamp(),
+      });
 
-    // Atualizar UI localmente (sem recarregar tudo)
-    setEquipamentosPorBloco((prev) => {
-      const novo = { ...prev };
-      const bloco = equipamentoSelecionado.bloco;
+      alert("PMOC registrado com sucesso!");
 
-      novo[bloco] = novo[bloco].map((e) =>
-        e.id === equipamentoSelecionado.id
-          ? {
-              ...e,
-              statusPMOC: "feito",
-              ultimaManutencao: new Date(),
-            }
-          : e
-      );
+      // 3️⃣ atualiza interface sem recarregar
+      setEquipamentosPorBloco((prev) => {
+        const novo = { ...prev };
+        const bloco = equipamentoSelecionado.bloco;
 
-      return novo;
-    });
+        novo[bloco] = novo[bloco].map((eq) =>
+          eq.id === equipamentoSelecionado.id
+            ? {
+                ...eq,
+                statusPMOC: "feito",
+                ultimaManutencao: new Date(),
+              }
+            : eq
+        );
 
-    setModalAberto(false);
+        return novo;
+      });
+
+      setModalAberto(false);
+      setDescricao("");
+    } catch (e) {
+      console.error("Erro ao registrar PMOC:", e);
+      alert("Erro ao salvar PMOC");
+    }
   }
 
-  // ---------------------------------------------
-  // ABRIR MODAL
-  // ---------------------------------------------
-  function abrirModal(eq, bloco) {
-    setEquipamentoSelecionado({ ...eq, bloco });
+  // ------------------------------
+  // ABRIR MODAL (CARREGAR EQUIPAMENTO ATUALIZADO)
+  // ------------------------------
+  async function abrirModal(eq, bloco) {
+    const snap = await getDoc(doc(db, "equipamentos", eq.id));
+    const dados = snap.data();
+
+    setEquipamentoSelecionado({
+      ...eq,
+      bloco,
+      statusPMOC: dados.statusPMOC || "pendente",
+      ultimaManutencao: dados.ultimaManutencao
+        ? new Date(dados.ultimaManutencao.toDate())
+        : null,
+    });
+
+    setDescricao("");
     setModalAberto(true);
   }
 
+  // ------------------------------
+  // INTERFACE
+  // ------------------------------
   return (
     <div className="max-w-4xl mx-auto p-4">
       <Header />
@@ -122,9 +172,9 @@ export default function RegistrarPmoc() {
         </div>
       ))}
 
-      {/* --------------------------------------------- */}
-      {/* MODAL PMOC */}
-      {/* --------------------------------------------- */}
+      {/* ------------------------ */}
+      {/* MODAL                    */}
+      {/* ------------------------ */}
       {modalAberto && (
         <div
           className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center p-4 z-50"
@@ -134,7 +184,6 @@ export default function RegistrarPmoc() {
             className="bg-white w-full max-w-md p-6 rounded-xl shadow-lg relative"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Botão fechar */}
             <button
               onClick={() => setModalAberto(false)}
               className="absolute top-3 right-3 text-xl text-gray-600 hover:text-black"
@@ -142,7 +191,7 @@ export default function RegistrarPmoc() {
               ×
             </button>
 
-            <h2 className="text-xl font-bold mb-4">Detalhes do Equipamento</h2>
+            <h2 className="text-xl font-bold mb-4">Registrar PMOC</h2>
 
             <div className="space-y-2 text-sm">
               <p><b>Código:</b> {equipamentoSelecionado.codigo}</p>
@@ -151,7 +200,8 @@ export default function RegistrarPmoc() {
               <p><b>Local:</b> {equipamentoSelecionado.local}</p>
               <p><b>Fabricante:</b> {equipamentoSelecionado.fabricante}</p>
               <p><b>Modelo:</b> {equipamentoSelecionado.modelo}</p>
-              <p><b>BTUs:</b> {equipamentoSelecionado.btu}</p>
+              <p><b>BTUs:</b> {equipamentoSelecionado.btus}</p>
+              <p><b>Status PMOC:</b> {equipamentoSelecionado.statusPMOC}</p>
 
               <p>
                 <b>Última Manutenção:</b>{" "}
@@ -160,21 +210,20 @@ export default function RegistrarPmoc() {
                   : "Nunca realizada"}
               </p>
 
-              <p>
-                <b>Status PMOC:</b>{" "}
-                {equipamentoSelecionado.statusPMOC === "feito" ? (
-                  <span className="text-green-600 font-bold">FEITO</span>
-                ) : (
-                  <span className="text-red-600 font-bold">PENDENTE</span>
-                )}
-              </p>
+              <p className="font-bold">Descrição da Manutenção:</p>
+              <textarea
+                className="w-full border rounded p-2"
+                value={descricao}
+                onChange={(e) => setDescricao(e.target.value)}
+                rows="3"
+              />
             </div>
 
             <button
               onClick={marcarPmoc}
               className="w-full bg-green-600 text-white p-3 rounded-lg mt-5 font-bold hover:bg-green-700"
             >
-              Marcar PMOC como Feito
+              Registrar Manutenção
             </button>
           </div>
         </div>

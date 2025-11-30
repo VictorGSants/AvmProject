@@ -1,4 +1,4 @@
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { db } from "/firebaseConfig";
 import { useEffect, useState } from "react";
 import Header from '../components/Header';
@@ -28,7 +28,8 @@ export default function EditarEquip() {
           bloco,
           fabricante: dados.fabricante || "",
           modelo: dados.modelo || "",
-          btu: dados.btus || dados.btu || "",
+          btus: dados.btus || dados.btu || "",
+          status: dados.status || "",
           local: dados.local || "",
           raw: dados,
         });
@@ -50,7 +51,7 @@ export default function EditarEquip() {
     setModalAberto(true);
   }
 
-  // ---------------------- CRIAR ORDEM DE SERVIÇO ----------------------
+  // ---------------------- editar dados ----------------------
   async function editar(event) {
     event.preventDefault(); //Impede o comportamento padrão do formulário. 
 
@@ -64,6 +65,7 @@ export default function EditarEquip() {
       fabricante: form.get("fabricanteCadastrado"),
       modelo: form.get("modeloCadastrado"),
       btus: form.get("btusCadastrado"),
+      status: form.get("status"),
 
     };
 
@@ -73,7 +75,17 @@ export default function EditarEquip() {
     const ref = doc(db, "equipamentos", equipamentoSelecionado.id);
     await updateDoc(ref, novosDados);
 
-    alert("Dados Atualizadps");
+    alert("Dados Atualizados");
+    setModalAberto(false);
+  }
+
+
+   async function deletar() {
+    console.log("Equipamento Deletado do Banco !");
+    const ref = doc(db, "equipamentos", equipamentoSelecionado.id);
+    await deleteDoc(ref);
+
+    alert("Dados Deletados !");
     setModalAberto(false);
   }
 
@@ -218,11 +230,30 @@ export default function EditarEquip() {
                 />
               </div>
 
+              <div>
+                <label className="font-semibold">Status: </label>
+                <input
+                  name="status"
+                  type="text"
+                  className="w-full p-2 border rounded"
+                  required
+                  defaultValue={equipamentoSelecionado.status || "SEM STATUS CADASTRADO"}
+                />
+              </div>
+
               <button
                 type="submit"
                 className="w-full bg-blue-600 p-3 rounded-lg text-white font-bold hover:bg-blue-700"
               >
                 Atualizar Dados do Equipamento 
+              </button>
+              
+              <button
+                onClick={deletar}
+                type="button"
+                className="w-full bg-red-600 p-3 rounded-lg text-white font-bold hover:bg--700"
+              >
+                Excluir Equipamento 
               </button>
             </form>
 

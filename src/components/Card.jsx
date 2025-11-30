@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
-import { PlusCircle, UserPlus, List, ClipboardList, CalendarCheck, AirVentIcon, Pen, PenBox } from "lucide-react";
+import { PlusCircle, UserPlus, List, ClipboardList, CalendarCheck, AirVentIcon, Pen, PenBox, MapPlus, MapMinus, Map, History } from "lucide-react";
 import { ArchiveBoxArrowDownIcon } from "@heroicons/react/16/solid";
+import { MapIcon } from "@heroicons/react/20/solid";
 
 export default function Card() {
   const navigate = useNavigate();
@@ -26,9 +27,11 @@ export default function Card() {
                 <main className="flex-grow p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <CardItem title="Criar Nova OS" icon={PlusCircle} path="/gestor/novaOs" />
                     <CardItem title="Cadastrar Equipamento" icon={AirVentIcon} path="/gestor/cadastrarEquipamento" />
-                    <CardItem title="Ver OS" icon={List} path="/gestor/verOsGestor" />
+                    <CardItem title="Histórico de Manutenções" icon={History} path="/gestor/historicoDeManutencoes" />
+
                     <CardItem title="PMOC" icon={ClipboardList} path="/gestor/pmoc" />
-                     <CardItem title="Editar Registro de Equipamento" icon={PenBox} path="/gestor/EditarEquip" />
+                    <CardItem title="Editar Registro de Equipamento" icon={PenBox} path="/gestor/EditarEquip" />
+                    <CardItem title="Mapa Hospital" icon={Map} path="/mapaHospital" />
                 </main>
             </div>  
   )
