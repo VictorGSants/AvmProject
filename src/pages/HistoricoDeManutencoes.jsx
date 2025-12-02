@@ -7,6 +7,7 @@ export default function HistoricoManutencoes() {
   const [equipamentosPorBloco, setEquipamentosPorBloco] = useState({});
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
   const [manutencoes, setManutencoes] = useState([]);
+  const [drawerAberto, setDrawerAberto] = useState(false);
 
   // ---------------------- CARREGA EQUIPAMENTOS ----------------------
   useEffect(() => {
@@ -60,6 +61,8 @@ export default function HistoricoManutencoes() {
       lista.sort((a, b) => (b.data?.getTime() || 0) - (a.data?.getTime() || 0));
 
       setManutencoes(lista);
+      setDrawerAberto(true);
+
     } catch (e) {
       console.error("Erro ao carregar manutenções:", e);
     }
@@ -86,11 +89,7 @@ export default function HistoricoManutencoes() {
               {equipamentosPorBloco[bloco].map((eq) => (
                 <li
                   key={eq.id}
-                  className={`p-3 rounded-lg cursor-pointer border transition ${
-                    equipamentoSelecionado?.id === eq.id
-                      ? "bg-blue-100 border-blue-500"
-                      : "bg-white hover:bg-blue-50 border-gray-300"
-                  }`}
+                  className="p-3 rounded-lg cursor-pointer border bg-white hover:bg-blue-50 hover:border-blue-500 transition shadow-sm"
                   onClick={() => carregarManutencoes(eq)}
                 >
                   <div className="flex justify-between">
@@ -106,13 +105,30 @@ export default function HistoricoManutencoes() {
         ))}
       </div>
 
-      {/* ---------------------- MANUTENÇÕES ---------------------- */}
-      {equipamentoSelecionado && (
-        <div className="mt-8 p-6 bg-white rounded-xl shadow">
-          <h2 className="text-2xl font-bold mb-4">
-            Manutenções de {equipamentoSelecionado.nome + " - " + equipamentoSelecionado.local}
+      {/* ---------------------- DRAWER LATERAL ---------------------- */}
+      <div
+        className={`fixed top-0 right-0 h-full w-full sm:w-96 bg-white shadow-2xl z-50 transform transition-transform duration-300 ${
+          drawerAberto ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {/* Cabeçalho */}
+        <div className="p-4 border-b flex justify-between items-center bg-gray-50">
+          <h2 className="text-xl font-bold">
+            {equipamentoSelecionado
+              ? `${equipamentoSelecionado.nome} – ${equipamentoSelecionado.local}`
+              : ""}
           </h2>
 
+          <button
+            onClick={() => setDrawerAberto(false)}
+            className="text-gray-500 text-2xl font-bold hover:text-black"
+          >
+            ×
+          </button>
+        </div>
+
+        {/* Conteúdo */}
+        <div className="p-4 overflow-y-auto h-[calc(100%-60px)]">
           {manutencoes.length === 0 ? (
             <p className="text-gray-500">Nenhuma manutenção registrada.</p>
           ) : (
@@ -126,16 +142,27 @@ export default function HistoricoManutencoes() {
                     {m.descricao || "Manutenção"}
                   </p>
 
-                  <p className="text-gray-600">
-                    {m.data ? m.data.toLocaleDateString() : "(sem data)"}
+                  <p className="text-gray-700">
+                    <b>Observação:</b> {m.observacao || "OK"}
                   </p>
 
-                  
+                  <p className="text-gray-600 mt-1">
+                    <b>Data:</b>{" "}
+                    {m.data ? m.data.toLocaleDateString() : "(sem data)"}
+                  </p>
                 </div>
               ))}
             </div>
           )}
         </div>
+      </div>
+
+      {/* Fundo escurecido quando o drawer está aberto */}
+      {drawerAberto && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-40 z-40"
+          onClick={() => setDrawerAberto(false)}
+        ></div>
       )}
     </div>
   );

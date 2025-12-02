@@ -16,6 +16,7 @@ export default function RegistrarPmoc() {
   const [modalAberto, setModalAberto] = useState(false);
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
   const [descricao, setDescricao] = useState("");
+  const [observacao, setObservacao] = useState("");
 
   // ------------------------------
   // CARREGA EQUIPAMENTOS POR BLOCO
@@ -64,6 +65,7 @@ export default function RegistrarPmoc() {
         data: serverTimestamp(),
         criadoEm: serverTimestamp(),
         tipo: "PMOC",
+        observacao
       }
     );
   }
@@ -106,6 +108,7 @@ export default function RegistrarPmoc() {
 
       setModalAberto(false);
       setDescricao("");
+      setObservacao("");
     } catch (e) {
       console.error("Erro ao registrar PMOC:", e);
       alert("Erro ao salvar PMOC");
@@ -128,6 +131,7 @@ export default function RegistrarPmoc() {
         : null,
     });
 
+    setObservacao("")
     setDescricao("");
     setModalAberto(true);
   }
@@ -218,6 +222,16 @@ export default function RegistrarPmoc() {
                 rows="3"
               />
             </div>
+            <div>
+            <p className="font-bold">Observação: </p>
+              <textarea
+                className="w-full border rounded p-2"
+                value={observacao}
+                onChange={(e) => setObservacao(e.target.value)}
+                rows="3"
+              />
+            </div>
+
 
             <button
               onClick={marcarPmoc}

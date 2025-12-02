@@ -6,7 +6,6 @@ import AuthLogin from "../pages/Login";
 import ProtectedRoutes from "./ProtectecRoutes";
 import NovaOs from "../pages/NovaOs";
 import AgendaTecnico from "../pages/Agenda";
-import PmocTecnico from "../pages/PmocTecnico";
 import CadastrarEquipamento from "../pages/CadastrarEquipamento"
 import PmocGestor from "../pages/PmocGestor";
 import EditarEquip from "../pages/EditarEquip";
@@ -72,6 +71,7 @@ export default function RouterApp() {
             <HomePageTecnico />
           </ProtectedRoutes>}>
         </Route>
+        
 
 
         <Route path="/tecnico/agenda" element={    
@@ -83,7 +83,7 @@ export default function RouterApp() {
     
         <Route path="/tecnico/pmoc" element={    
           <ProtectedRoutes>
-            <PmocTecnico />
+            <PmocGestor />
           </ProtectedRoutes>}>
         </Route>
 
