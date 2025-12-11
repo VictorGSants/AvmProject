@@ -19,26 +19,30 @@ export default function RegistrarPmoc() {
   const [descricao, setDescricao] = useState("");
   const [observacao, setObservacao] = useState("");
 
-  // Ciclo atual
+  // CICLO ATUAL
   const [cicloAtual, setCicloAtual] = useState("");
 
   // ------------------------------
-  // Carregar ciclo atual + equipamentos
+  // CARREGAR CICLO ATUAL + EQUIPAMENTOS
   // ------------------------------
   useEffect(() => {
     async function carregarTudo() {
+      // Carregar ciclo PMOC
       const cicloRef = doc(db, "config", "pmoc");
       const cicloSnap = await getDoc(cicloRef);
 
       if (cicloSnap.exists()) {
         setCicloAtual(cicloSnap.data().cicloAtual);
       } else {
-        // criar ciclo inicial
+        // cria o primeiro ciclo automaticamente
         const mes = new Date().toLocaleString("pt-BR", { month: "long" });
         const ano = new Date().getFullYear();
-        const ciclo = `${mes.toUpperCase()}-${ano}`;
+        const ciclo = `${mes.toUpperCase()}/${ano}`;
 
-        await setDoc(cicloRef, { cicloAtual: ciclo });
+        await updateDoc(cicloRef, { cicloAtual: ciclo }).catch(async () => {
+          await setDoc(cicloRef, { cicloAtual: ciclo });
+        });
+
         setCicloAtual(ciclo);
       }
 
@@ -76,64 +80,41 @@ export default function RegistrarPmoc() {
   }, []);
 
   // ------------------------------
-  // Salvar manutenção nas subcoleções
+  // SALVAR MANUTENÇÃO EM SUBCOLEÇÃO
   // ------------------------------
   async function registrarManutencaoSubcolecao() {
-    const cicloNormalizado = cicloAtual.replace("/", "-");
-
-    const dado = {
-      descricao,
-      observacao,
-      data: serverTimestamp(),
-      criadoEm: serverTimestamp(),
-      tipo: "PMOC",
-      ciclo: cicloAtual,
-      equipamentoId: equipamentoSelecionado.id,
-      equipamentoNome: equipamentoSelecionado.nome,
-      bloco: equipamentoSelecionado.bloco,
-      codigo: equipamentoSelecionado.codigo,
-      local: equipamentoSelecionado.local,
-    };
-
-    // 1) SALVA no equipamento
     await addDoc(
       collection(db, "equipamentos", equipamentoSelecionado.id, "manutencoes"),
-      dado
-    );
-
-    // 2) SALVA no ciclo atual
-    await addDoc(
-      collection(
-        db,
-        "config",
-        "pmoc",
-        "ciclos",
-        cicloNormalizado,
-        "manutencoes"
-      ),
-      dado
+      {
+        descricao,
+        observacao,
+        data: serverTimestamp(),
+        criadoEm: serverTimestamp(),
+        tipo: "PMOC",
+        ciclo: cicloAtual,
+      }
     );
   }
 
   // ------------------------------
-  // Resetar PMOC (novo ciclo)
+  // RESETAR CICLO PMOC (novo mês)
   // ------------------------------
   async function resetarPmoc() {
-    if (!confirm("Iniciar novo ciclo?")) return;
+    if (!confirm("Tem certeza que deseja iniciar um novo ciclo de PMOC?")) return;
 
     const mes = new Date().toLocaleString("pt-BR", { month: "long" });
     const ano = new Date().getFullYear();
-    const novoCiclo = `${mes.toUpperCase()}-${ano}`;
+    const novoCiclo = `${mes.toUpperCase()}/${ano}`;
 
     try {
-      // Atualizar ciclo no Firestore
+      // Atualiza o documento de ciclo atual
       await updateDoc(doc(db, "config", "pmoc"), {
         cicloAtual: novoCiclo,
       });
 
       setCicloAtual(novoCiclo);
 
-      // resetar equipamentos
+      // Reset equipamentos
       const snap = await getDocs(collection(db, "equipamentos"));
 
       const updates = snap.docs.map(async (d) => {
@@ -145,7 +126,20 @@ export default function RegistrarPmoc() {
 
       await Promise.all(updates);
 
-      alert("Novo ciclo iniciado!");
+      alert("Novo ciclo de PMOC iniciado!");
+
+      // Atualiza interface
+      setEquipamentosPorBloco((prev) => {
+        const novo = {};
+        Object.keys(prev).forEach((bloco) => {
+          novo[bloco] = prev[bloco].map((eq) => ({
+            ...eq,
+            statusPMOC: "pendente",
+            cicloPMOC: novoCiclo,
+          }));
+        });
+        return novo;
+      });
     } catch (e) {
       console.error("Erro ao resetar PMOC:", e);
       alert("Erro ao iniciar novo ciclo.");
@@ -153,14 +147,16 @@ export default function RegistrarPmoc() {
   }
 
   // ------------------------------
-  // Marcar PMOC
+  // MARCAR PMOC
   // ------------------------------
   async function marcarPmoc() {
     if (!equipamentoSelecionado) return;
 
     try {
+      // salva subcoleção
       await registrarManutencaoSubcolecao();
 
+      // marca como feito para o ciclo atual
       await updateDoc(doc(db, "equipamentos", equipamentoSelecionado.id), {
         statusPMOC: "feito",
         ultimaManutencao: serverTimestamp(),
@@ -169,7 +165,7 @@ export default function RegistrarPmoc() {
 
       alert("PMOC registrado!");
 
-      // interface
+      // atualiza interface
       setEquipamentosPorBloco((prev) => {
         const novo = { ...prev };
         novo[equipamentoSelecionado.bloco] = novo[
@@ -197,7 +193,7 @@ export default function RegistrarPmoc() {
   }
 
   // ------------------------------
-  // Abrir modal
+  // ABRIR MODAL
   // ------------------------------
   async function abrirModal(eq, bloco) {
     const snap = await getDoc(doc(db, "equipamentos", eq.id));
@@ -217,9 +213,6 @@ export default function RegistrarPmoc() {
     setModalAberto(true);
   }
 
-  // ------------------------------
-  // Interface
-  // ------------------------------
   return (
     <div className="max-w-5xl mx-auto p-4">
       <Header />
@@ -229,12 +222,7 @@ export default function RegistrarPmoc() {
           Ciclo Atual: <span className="text-blue-700">{cicloAtual}</span>
         </h2>
 
-        <button
-          onClick={resetarPmoc}
-          className="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700"
-        >
-          Iniciar Novo Ciclo PMOC
-        </button>
+    
       </div>
 
       <h1 className="text-3xl font-bold text-center mt-4 mb-6">

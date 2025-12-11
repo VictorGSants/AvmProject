@@ -11,6 +11,7 @@ import PmocGestor from "../pages/PmocGestor";
 import EditarEquip from "../pages/EditarEquip";
 import MapaHospital from "../pages/mapaHospital";
 import HistoricoDeManutencoes from "../pages/HistoricoDeManutencoes";
+import PmocTecnico from "../pages/PmocTecnico"
 
 export default function RouterApp() {
   return (
@@ -81,9 +82,9 @@ export default function RouterApp() {
         </Route>
       
     
-        <Route path="/tecnico/pmoc" element={    
+        <Route path="/tecnico/PmocTecnico" element={    
           <ProtectedRoutes>
-            <PmocGestor />
+            <PmocTecnico />
           </ProtectedRoutes>}>
         </Route>
 

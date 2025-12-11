@@ -139,7 +139,7 @@ export default function HistoricoManutencoes() {
                   className="p-4 bg-gray-100 rounded-xl shadow-inner"
                 >
                   <p className="font-semibold text-lg">
-                    {m.descricao || "Manutenção"}
+                    {m.descricao || ""}
                   </p>
 
                   <p className="text-gray-700">
