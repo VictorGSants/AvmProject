@@ -41,7 +41,7 @@ export default function Card() {
                 <main className="flex-grow p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
                     <CardItem title="Agenda" icon={CalendarCheck} path="/tecnico/agenda" />
                     <CardItem title="Mapa Hospital" icon={Map} path="/mapaHospital" />
-                    <CardItem title="PMOC" icon={ClipboardList} path="/tecnico/pmoc" />
+                    <CardItem title="PMOC" icon={ClipboardList} path="/tecnico/PmocTecnico" />
                 </main>
             </div>  
     )

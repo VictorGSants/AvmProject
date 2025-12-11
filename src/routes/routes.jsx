@@ -87,9 +87,6 @@ export default function RouterApp() {
             <PmocTecnico />
           </ProtectedRoutes>}>
         </Route>
-
-
-        
       </Routes>
     </BrowserRouter>
   );
