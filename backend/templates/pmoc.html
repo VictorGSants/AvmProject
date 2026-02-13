@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page { size: A4; margin: 1cm; }
+        body { font-family: Helvetica, Arial, sans-serif; font-size: 9pt; }
+        
+        /* Utilitários */
+        .page-break { page-break-after: always; }
+        .text-center { text-align: center; }
+        .bold { font-weight: bold; }
+        .uppercase { text-transform: uppercase; }
+        
+        /* Tabelas */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        th, td { border: 1px solid #000; padding: 4px; font-size: 8pt; vertical-align: middle; }
+        th { background-color: #f0f0f0; text-align: center; font-weight: bold; }
+
+        /* Capa */
+        .capa-container { text-align: center; margin-top: 50px; }
+        .capa-titulo { font-size: 20pt; margin: 20px 0; border: 2px solid #000; padding: 20px; }
+        
+        /* Matriz de Manutenção */
+        .check-x { font-weight: bold; font-size: 10pt; text-align: center; }
+        .desc-col { text-align: left; }
+    </style>
+</head>
+<body>
+
+    <div class="capa-container page-break">
+        {% if logo_cliente %}
+        <img src="{{ logo_cliente }}" style="max-height: 100px; margin-bottom: 20px;">
+        {% endif %}
+        
+        <div class="capa-titulo">
+            PMOC<br>
+            PLANO DE MANUTENÇÃO, OPERAÇÃO E CONTROLE
+        </div>
+        
+        <h3>{{ anos }}</h3>
+        
+        <br><br><br>
+        <h2>{{ contrato.cliente_nome }}</h2>
+        <p>{{ contrato.endereco }}</p>
+        <p>CNPJ: {{ contrato.cnpj }}</p>
+
+        <br><br><br><br>
+        <p><strong>Responsável Técnico:</strong> {{ tecnico }}</p>
+        <p><strong>Empresa Mantenedora:</strong> {{ empresa_nome }}</p>
+    </div>
+
+    <div class="page-break">
+        <h2 class="text-center" style="border: 1px solid black; padding: 10px;">TERMO DE RESPONSABILIDADE TÉCNICA</h2>
+        <br>
+        <p>Declaramos para os devidos fins que os equipamentos listados neste documento estão sob responsabilidade técnica de:</p>
+        
+        <table style="margin-top: 20px;">
+            <tr>
+                <td width="30%" class="bold">Técnico:</td>
+                <td>{{ tecnico }}</td>
+            </tr>
+            <tr>
+                <td class="bold">Empresa:</td>
+                <td>{{ empresa_nome }}</td>
+            </tr>
+            <tr>
+                <td class="bold">Cliente:</td>
+                <td>{{ contrato.cliente_nome }}</td>
+            </tr>
+        </table>
+        
+        <br><br><br>
+        <div class="text-center">
+            ________________________________________<br>
+            Assinatura do Responsável Técnico
+        </div>
+    </div>
+
+    <div class="page-break">
+        <h3>LISTAGEM DE EQUIPAMENTOS</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>TAG/Cód</th>
+                    <th>Nome</th>
+                    <th>Local</th>
+                    <th>Marca/Modelo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for eq in equipamentos %}
+                <tr>
+                    <td class="text-center">{{ eq.codigo }}</td>
+                    <td>{{ eq.nome }}</td>
+                    <td>{{ eq.local }}</td>
+                    <td>{{ eq.marca }} / {{ eq.modelo }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% for eq in equipamentos %}
+    <div class="page-break">
+        <table style="background-color: #e6e6e6;">
+            <tr>
+                <td colspan="4" class="text-center bold">FICHA DE MANUTENÇÃO E CONTROLE</td>
+            </tr>
+            <tr>
+                <td width="15%"><strong>TAG:</strong> {{ eq.codigo }}</td>
+                <td width="35%"><strong>Equipamento:</strong> {{ eq.nome }}</td>
+                <td width="35%"><strong>Local:</strong> {{ eq.local }}</td>
+                <td width="15%"><strong>Tipo:</strong> {{ eq.tipo }}</td>
+            </tr>
+        </table>
+
+        <table>
+            <thead>
+                <tr>
+                    <th width="5%">Freq.</th>
+                    <th width="45%">Atividade</th>
+                    {% for mes in meses_header %}
+                    <th width="4%">{{ mes }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for task in eq.tasks_processadas %}
+                <tr>
+                    <td class="text-center">{{ task.freq }}</td>
+                    <td class="desc-col">{{ task.desc }}</td>
+                    
+                    {% for mes in meses_header %}
+                    <td class="check-x">
+                        {% if mes in task.meses_feitos %}X{% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h4>Histórico de Intervenções</h4>
+        <table>
+            <tr>
+                <th width="20%">Data</th>
+                <th>Descrição do Serviço Realizado</th>
+            </tr>
+            {% for log in eq.manutencoes %}
+            <tr>
+                <td class="text-center">{{ log.data_formatada }}</td>
+                <td>{{ log.descricao }} ({{ log.tipo }})</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="2" class="text-center">Nenhuma manutenção registrada no período.</td></tr>
+            {% endfor %}
+        </table>
+        
+        <br>
+        <div style="font-size: 8pt; color: #666;">Gerado automaticamente via Sistema.</div>
+    </div>
+    {% endfor %}
+
+</body>
+</html>
