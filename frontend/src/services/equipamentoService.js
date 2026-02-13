@@ -1,4 +1,4 @@
-import { addDoc, deleteDoc, doc, getDocs, updateDoc, query, where, getDoc } from "firebase/firestore";
+import { addDoc, deleteDoc, doc, getDocs, updateDoc, query, where, getDoc, collection } from "firebase/firestore";
 // Supondo que você tenha uma ref para o DB configurada em algum lugar
 import { db } from "../config/firebaseConfig"; 
 import { EMPRESAID } from "../config/empresa";
