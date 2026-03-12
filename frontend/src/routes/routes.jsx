@@ -1,5 +1,5 @@
 import React from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import HomePageGestor from "../pages/HomePageGestor";
 import HomePageTecnico from "../pages/HomePageTecnico";
 import AuthLogin from "../pages/Login";
@@ -18,7 +18,7 @@ import ContratoProvider  from "../context/ContratoContext";
 
 export default function RouterApp() {
   return (
-    <BrowserRouter>
+    <HashRouter>
       <ContratoProvider>
 
         <Routes>
@@ -123,7 +123,7 @@ export default function RouterApp() {
         </Routes>
 
       </ContratoProvider>
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
