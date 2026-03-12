@@ -22,6 +22,7 @@ export default function PmocGestor() {
   const [descricao, setDescricao] = useState("");
   const [observacao, setObservacao] = useState("");
   const [loading, setLoading] = useState(false);
+  const [busca, setBusca] = useState("");
 
   //----------------------------------
 
@@ -127,13 +128,18 @@ export default function PmocGestor() {
 
   //----------------------------------
 
-  const blocos = {};
+ const blocos = {};
 
-  equipamentos.forEach(eq => {
+  // Filtra os equipamentos com base no que foi digitado
+  const equipamentosFiltrados = equipamentos.filter(eq => 
+    eq.nome?.toLowerCase().includes(busca.toLowerCase()) || 
+    eq.codigo?.toLowerCase().includes(busca.toLowerCase()) ||
+    eq.local?.toLowerCase().includes(busca.toLowerCase())
+  );
+
+  equipamentosFiltrados.forEach(eq => {
     const bloco = eq.bloco || "SEM BLOCO";
-
     if (!blocos[bloco]) blocos[bloco] = [];
-
     blocos[bloco].push(eq);
   });
 
@@ -147,6 +153,21 @@ export default function PmocGestor() {
       <h1 className="text-3xl font-bold text-center mb-8">
         Controle de PMOC
       </h1>
+
+      <div className="mb-6">
+        <div className="relative">
+          <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400">
+            🔍
+          </span>
+          <input
+            type="text"
+            placeholder="Pesquisar por nome, código ou local..."
+            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+        </div>
+      </div>
 
       {/* LOADING */}
       {loading && (
