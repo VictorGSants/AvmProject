@@ -25,7 +25,7 @@ export default function CadastrarEquipamento() {
       modelo: form.get("modelo"),
       capacidadeDeRefrigeracao: form.get("btus"),
       status: form.get("status"),
-      Gas_Refrigerante: form.get("gas"),
+      gas_refrigerante: form.get("gas"),
       tensao: form.get("tensao")
     };
     

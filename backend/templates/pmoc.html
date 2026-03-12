@@ -28,54 +28,7 @@
 </head>
 <body>
 
-    <div class="capa-container page-break">
-        {% if logo_cliente %}
-        <img src="{{ logo_cliente }}" style="max-height: 100px; margin-bottom: 20px;">
-        {% endif %}
-        
-        <div class="capa-titulo">
-            PMOC<br>
-            PLANO DE MANUTENÇÃO, OPERAÇÃO E CONTROLE
-        </div>
-        
-        <h3>{{ anos }}</h3>
-        
-        <br><br><br>
-        <h2>{{ contrato.cliente_nome }}</h2>
-        <p>{{ contrato.endereco }}</p>
-        <p>CNPJ: {{ contrato.cnpj }}</p>
-
-        <br><br><br><br>
-        <p><strong>Responsável Técnico:</strong> {{ tecnico }}</p>
-        <p><strong>Empresa Mantenedora:</strong> {{ empresa_nome }}</p>
-    </div>
-
-    <div class="page-break">
-        <h2 class="text-center" style="border: 1px solid black; padding: 10px;">TERMO DE RESPONSABILIDADE TÉCNICA</h2>
-        <br>
-        <p>Declaramos para os devidos fins que os equipamentos listados neste documento estão sob responsabilidade técnica de:</p>
-        
-        <table style="margin-top: 20px;">
-            <tr>
-                <td width="30%" class="bold">Técnico:</td>
-                <td>{{ tecnico }}</td>
-            </tr>
-            <tr>
-                <td class="bold">Empresa:</td>
-                <td>{{ empresa_nome }}</td>
-            </tr>
-            <tr>
-                <td class="bold">Cliente:</td>
-                <td>{{ contrato.cliente_nome }}</td>
-            </tr>
-        </table>
-        
-        <br><br><br>
-        <div class="text-center">
-            ________________________________________<br>
-            Assinatura do Responsável Técnico
-        </div>
-    </div>
+    
 
     <div class="page-break">
         <h3>LISTAGEM DE EQUIPAMENTOS</h3>
@@ -94,7 +47,7 @@
                     <td class="text-center">{{ eq.codigo }}</td>
                     <td>{{ eq.nome }}</td>
                     <td>{{ eq.local }}</td>
-                    <td>{{ eq.marca }} / {{ eq.modelo }}</td>
+                    <td>{{ eq.fabricante }} / {{ eq.modelo }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -111,30 +64,28 @@
                 <td width="15%"><strong>TAG:</strong> {{ eq.codigo }}</td>
                 <td width="35%"><strong>Equipamento:</strong> {{ eq.nome }}</td>
                 <td width="35%"><strong>Local:</strong> {{ eq.local }}</td>
-                <td width="15%"><strong>Tipo:</strong> {{ eq.tipo }}</td>
+                <td width="15%"><strong>Capacidade de Refrigeração:</strong> {{ eq.capacidadeDeRefrigeracao }}</td>
             </tr>
         </table>
 
         <table>
             <thead>
                 <tr>
-                    <th width="5%">Freq.</th>
-                    <th width="45%">Atividade</th>
-                    {% for mes in meses_header %}
-                    <th width="4%">{{ mes }}</th>
+                    <th>Freq.</th>
+                    <th>Atividade</th>
+                    {% for mes in contrato_data.header_meses %}
+                    <th>{{ mes }}</th>
                     {% endfor %}
                 </tr>
             </thead>
+
             <tbody>
                 {% for task in eq.tasks_processadas %}
                 <tr>
-                    <td class="text-center">{{ task.freq }}</td>
-                    <td class="desc-col">{{ task.desc }}</td>
-                    
-                    {% for mes in meses_header %}
-                    <td class="check-x">
-                        {% if mes in task.meses_feitos %}X{% endif %}
-                    </td>
+                    <td>{{ task.freq }}</td>
+                    <td>{{ task.desc }}</td>
+                    {% for mes in contrato_data.header_meses %}
+                    <td>{% if mes in task.meses_feitos %} X {% endif %}</td>
                     {% endfor %}
                 </tr>
                 {% endfor %}

@@ -1,4 +1,33 @@
+import os
+import io
+from datetime import datetime
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Response
+from fastapi.middleware.cors import CORSMiddleware
+import firebase_admin
+from firebase_admin import credentials, firestore
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+# IMPORTANTE: Instale com pip install PyPDF2
+from PyPDF2 import PdfMerger, PdfReader 
 
+# ----------------- CONFIGURAÇÃO -----------------
+load_dotenv()
+
+# Inicializa Firebase
+SERVICE_ACCOUNT = os.getenv("FIREBASE_SERVICE_ACCOUNT", "serviceAccountKey.json")
+if not firebase_admin._apps:
+    cred = credentials.Certificate(SERVICE_ACCOUNT)
+    firebase_admin.initialize_app(cred)
+db = firestore.client()
+
+app = FastAPI()
+app.add_middleware(
+    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+)
+
+# Configuração do Template (Jinja2)
+env = Environment(loader=FileSystemLoader('templates'))
 
 CHECKLISTS = {
     "SPLIT": [
@@ -185,42 +214,6 @@ CHECKLISTS = {
     ],
 }
 
-import os
-import io
-from datetime import datetime
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Response
-from fastapi.middleware.cors import CORSMiddleware
-import firebase_admin
-from firebase_admin import credentials, firestore
-from jinja2 import Environment, FileSystemLoader
-from weasyprint import HTML
-# IMPORTANTE: Instale com pip install PyPDF2
-from PyPDF2 import PdfMerger, PdfReader 
-
-# ----------------- CONFIGURAÇÃO -----------------
-load_dotenv()
-
-# Inicializa Firebase
-SERVICE_ACCOUNT = os.getenv("FIREBASE_SERVICE_ACCOUNT", "serviceAccountKey.json")
-if not firebase_admin._apps:
-    cred = credentials.Certificate(SERVICE_ACCOUNT)
-    firebase_admin.initialize_app(cred)
-db = firestore.client()
-
-app = FastAPI()
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
-)
-
-# Configuração do Template (Jinja2)
-env = Environment(loader=FileSystemLoader('templates'))
-
-# --- SEU DICIONÁRIO CHECKLISTS AQUI ---
-CHECKLISTS = {                
-    "SPLIT": [("Limpar filtros", "M"), ("Verificar dreno", "M")],
-    # ... cole o restante do seu dicionário aqui
-}
 def get_checklist_for_equipment(equip_dict):
     """Retorna a lista de tarefas baseada no nome/tipo do equipamento"""
     tipo = str(equip_dict.get("tipo", "")).upper()
@@ -231,20 +224,40 @@ def get_checklist_for_equipment(equip_dict):
             return tasks
     return [("Inspeção Geral", "M")] # Fallback
 
-# ----------------- LÓGICA DE DADOS -----------------
+from datetime import datetime
+def get_meses_nomes():
+    return ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
 
-def get_meses_header():
-    return ["Nov", "Dez", "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out"]
+def gerar_header_dinamico(mes_inicio):
+    """Cria a lista de meses começando pelo mês de início do contrato."""
+    nomes_base = get_meses_nomes()
+    header_nomes = []
+    header_nums = []
+    for i in range(12):
+        idx = (mes_inicio - 1 + i) % 12
+        header_nomes.append(nomes_base[idx])
+        header_nums.append(idx + 1)
+    return header_nomes, header_nums
+
+def calcular_marcao_automatica(freq, indice_coluna):
+    # No primeiro mês (índice 0), marca tudo
+    if indice_coluna == 0: return True
+    
+    if freq == "M": return True
+    if freq == "T": return indice_coluna % 3 == 0
+    if freq == "S": return indice_coluna % 6 == 0
+    if freq == "A": return indice_coluna % 12 == 0
+    return False
+from datetime import datetime
+import locale
+
+try:
+    locale.setlocale(locale.LC_TIME, 'pt_BR.UTF-8')
+except:
+    pass
 
 def processar_dados_pmoc(empresa_id, contrato_id):
-    """
-    Busca dados no Firestore e prepara estrutura para o HTML
-    """
-    # 1. Buscar Contrato com a sua estrutura de caminho
-    # empresa_id será "A.V.M-AR-CAMPINAS"
-    # contrato_id será "piracicaba"
-    contrato_ref = db.collection("empresas").document(empresa_id)\
-                     .collection("contratos").document(contrato_id)
+    contrato_ref = db.collection("empresas").document(empresa_id).collection("contratos").document(contrato_id)
     contrato_doc = contrato_ref.get()
     
     if not contrato_doc.exists:
@@ -252,57 +265,82 @@ def processar_dados_pmoc(empresa_id, contrato_id):
     
     contrato_data = contrato_doc.to_dict()
     
-    # Adicione campos fallback caso não existam no banco
-    contrato_data.setdefault('cliente_nome', 'Cliente Sem Nome')
-    contrato_data.setdefault('endereco', 'Endereço não cadastrado')
+    # --- 1. DATAS ---
+    mes_inicio_num = int(contrato_data.get('mes_inicio', 1)) 
+    ano_contrato = int(contrato_data.get('ano', datetime.now().year))
+    
+    # Resolve ano de início
+    if mes_inicio_num > 1: 
+        ano_inicio_ciclo = ano_contrato - 1
+    else:
+        ano_inicio_ciclo = ano_contrato
 
-    # 2. Buscar Equipamentos (subcoleção dentro do contrato)
+    header_nomes, header_nums = gerar_header_dinamico(mes_inicio_num)
+    contrato_data['header_meses'] = header_nomes 
+
+    # Referência do momento atual
+    hoje = datetime.now()
+    data_atual_referencia = hoje.year * 100 + hoje.month # 202603 para Março de 2026
+
     equipamentos = []
     equips_ref = contrato_ref.collection("equipamentos").order_by("codigo").stream()
 
-    meses_map = {
-        1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
-        7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez"
-    }
-
     for doc in equips_ref:
         eq = doc.to_dict()
-        eq['id'] = doc.id
+        eq_id = doc.id
         
-        # Buscar Logs de Manutenção (Subcoleção dentro de cada equipamento)
-        logs_ref = contrato_ref.collection("equipamentos").document(doc.id)\
-                               .collection("manutencoes").order_by("data", direction=firestore.Query.DESCENDING)
-        
-        lista_logs = []
-        meses_com_manutencao = set()
+        # --- 2. HISTÓRICO (Mantém igual, só pra exibir lá em baixo) ---
+        logs = contrato_ref.collection("equipamentos").document(eq_id).collection("manutencoes").order_by("data", direction=firestore.Query.DESCENDING).stream()
+        lista_historico = []
 
-        for log in logs_ref.stream():
-            d = log.to_dict()
-            data_obj = d.get('data') 
+        for l in logs:
+            d = l.to_dict()
+            raw_date = d.get('data')
+            data_obj = None
+            if raw_date:
+                if hasattr(raw_date, 'date'):
+                    data_obj = raw_date
+                elif isinstance(raw_date, str):
+                    try:
+                        data_obj = datetime.fromisoformat(raw_date.replace('Z', ''))
+                    except:
+                        pass
+            
             if data_obj:
-                d['data_formatada'] = data_obj.strftime("%d/%m/%Y")
-                mes_sigla = meses_map.get(data_obj.month)
-                if mes_sigla:
-                    meses_com_manutencao.add(mes_sigla)
-            
-            lista_logs.append(d)
+                lista_historico.append({
+                    "data_formatada": data_obj.strftime("%d/%m/%Y"),
+                    "descricao": d.get("descricao", "Manutenção Preventiva"),
+                    "tipo": d.get("tipo", "Rotina")
+                })
 
-        eq['manutencoes'] = lista_logs
+        eq['manutencoes'] = lista_historico
 
-        # PROCESSAR CHECKLIST
+        # --- 3. REGRA DO X (FORÇAR PASSADO E ATUAL) ---
         checklist_padrao = get_checklist_for_equipment(eq)
-        
         tasks_processadas = []
-        for descricao, freq in checklist_padrao:
-            task_info = {
-                "desc": descricao,
-                "freq": freq,
-                "meses_feitos": [] 
-            }
+        
+        for desc, freq in checklist_padrao:
+            task_info = {"desc": desc, "freq": freq, "meses_feitos": []}
             
-            for mes in get_meses_header():
-                if mes in meses_com_manutencao:
-                    task_info["meses_feitos"].append(mes)
+            for i, mes_nome in enumerate(header_nomes):
+                num_mes_coluna = header_nums[i]
+                
+                # Acha o ano desta coluna
+                ano_da_coluna = ano_inicio_ciclo
+                if num_mes_coluna < mes_inicio_num:
+                    ano_da_coluna = ano_inicio_ciclo + 1
+                
+                data_coluna_ref = ano_da_coluna * 100 + num_mes_coluna
+                
+                # A COLUNA JÁ PASSOU OU É AGORA? (Ex: Nov/25 <= Mar/26 -> TRUE)
+                is_passado_ou_atual = data_coluna_ref < data_atual_referencia
+                
+                # A FREQUÊNCIA PEDE NESTE MÊS? (0=Nov, 1=Dez, 2=Jan, 3=Fev...)
+                deve_pelo_plano = calcular_marcao_automatica(freq, i)
+
+                # SE O MÊS CHEGOU E O PLANO PEDE, MARCA O X! (Não olha pro BD)
+                if is_passado_ou_atual and deve_pelo_plano:
+                    task_info["meses_feitos"].append(mes_nome)
             
             tasks_processadas.append(task_info)
         
@@ -311,15 +349,20 @@ def processar_dados_pmoc(empresa_id, contrato_id):
 
     return contrato_data, equipamentos
 
-# ----------------- FUSÃO DE PDFS (NOVO) -----------------
+# ----------------- FUSÃO DE PDFS -----------------
 def mesclar_pdfs(miolo_pdf_bytes, caminho_capa_trt):
     merger = PdfMerger()
     
-    # 1. Adiciona a capa estática se o arquivo existir
-    if caminho_capa_trt and os.path.exists(caminho_capa_trt):
-        merger.append(PdfReader(open(caminho_capa_trt, 'rb')))
-    
-    # 2. Adiciona o miolo gerado dinamicamente
+    # 1. Adiciona a capa se existir
+    # Caminho ajustado para pasta static local ou absoluta
+    if caminho_capa_trt:
+         # Tenta achar o arquivo. Se estiver na mesma pasta ou caminho relativo
+        if os.path.exists(caminho_capa_trt):
+             merger.append(PdfReader(open(caminho_capa_trt, 'rb')))
+        else:
+            print(f"AVISO: Capa não encontrada em {caminho_capa_trt}")
+
+    # 2. Adiciona o miolo
     merger.append(io.BytesIO(miolo_pdf_bytes))
     
     output = io.BytesIO()
@@ -327,32 +370,26 @@ def mesclar_pdfs(miolo_pdf_bytes, caminho_capa_trt):
     merger.close()
     return output.getvalue()
 
-# ----------------- ENDPOINT -----------------
-
+# ----------------- ENDPOINT FINAL -----------------
 @app.get("/pmoc-pdf/{empresa_id}/{contrato_id}")
 def gerar_pdf(empresa_id: str, contrato_id: str):
     try:
-        # 1. Busca e Processa Dados do Firestore
-        contrato, equipamentos = processar_dados_pmoc(empresa_id, contrato_id)
+        contrato_obj, lista_equipamentos = processar_dados_pmoc(empresa_id, contrato_id)
         
-        # 2. Renderiza HTML do Miolo com Jinja2
         template = env.get_template('pmoc.html')
+        
+        # AQUI ESTAVA O ERRO: O nome da variável deve ser 'contrato_data'
         html_content = template.render(
-            contrato=contrato,
-            equipamentos=equipamentos,
-            meses_header=get_meses_header(),
+            contrato_data=contrato_obj,      # <--- CORRIGIDO AQUI
+            equipamentos=lista_equipamentos,
             tecnico=os.getenv("PMOC_TECNICO", "André Técnico"),
             empresa_nome=os.getenv("PMOC_EMPRESA", "AVM AR CAMPINAS"),
-            anos="2025/2026",
-            logo_cliente=os.getenv("LOGO_CLIENTE", "")
+            logo_cliente=""
         )
         
-        # 3. Converte HTML para PDF (Miolo)
         miolo_bytes = HTML(string=html_content).write_pdf()
         
-        # 4. Mescla com a Capa/TRT específica do contrato
-        # O caminho do PDF da capa deve estar salvo no Firestore no documento do contrato
-        caminho_capa = contrato.get('caminho_capa_trt') 
+        caminho_capa = contrato_obj.get('caminho_capa_trt') 
         pdf_final_bytes = mesclar_pdfs(miolo_bytes, caminho_capa)
         
         return Response(

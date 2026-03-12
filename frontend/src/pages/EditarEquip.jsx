@@ -41,6 +41,13 @@ if (!contratoId) {
           nome: dados.nome || "",
           local: dados.local || "",
           bloco,
+          fabricante: dados.fabricante || "",
+          modelo: dados.modelo || "",
+          btus: dados.capacidadeDeRefrigeracao || "",
+          status: dados.status || "",
+          tensao: dados.tensao  || "", 
+          gas: dados.gas_refrigerante || "",
+          
         });
       });
 
@@ -69,14 +76,17 @@ if (!contratoId) {
   const form = new FormData(event.target);
 
   const novosDados = {
-    codigo: form.get("codigoEquipamento"),
-    nome: form.get("nomeEquipamento"),
-    bloco: form.get("blocoCadastrado"),
-    local: form.get("localCadastrado"),
-    fabricante: form.get("fabricanteCadastrado"),
-    modelo: form.get("modeloCadastrado"),
-    btus: form.get("btusCadastrado"),
+    codigo: form.get("codigo"),
+    nome: form.get("nome"),
+    bloco: form.get("bloco"),
+    local: form.get("local"),
+    fabricante: form.get("fabricante"),
+    modelo: form.get("modelo"),
+    capacidadeDeRefrigeracao: form.get("btus"),
     status: form.get("status"),
+    tensao: form.get("tensao"),
+    gas_refrigerante: form.get("gas")
+
   };
 
   try {
@@ -147,7 +157,7 @@ async function deletar() {
                 `}
               >
                 <span className="font-bold text-gray-800">{eq.local}</span>
-                <span className="text-gray-600">{eq.nome + " - " + eq.codigo }</span>
+                <span className="text-gray-600">{eq.nome + " - " + eq.codigo + " - " + eq.local}</span>
                 
               </li>
             ))}
@@ -245,9 +255,9 @@ async function deletar() {
               </div>
 
               <div>
-                <label className="font-medium">BTUS: </label>
+                <label className="font-medium">Capacidade de Refrigeração:: </label>
                 <input
-                  name="btusCadastrado"
+                  name="btus"
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   required
@@ -263,6 +273,28 @@ async function deletar() {
                   className="w-full p-2 border rounded"
                   required
                   defaultValue={equipamentoSelecionado.status || "SEM STATUS CADASTRADO"}
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold">Tensão: </label>
+                <input
+                  name="tensao"
+                  type="text"
+                  className="w-full p-2 border rounded"
+                  required
+                  defaultValue={equipamentoSelecionado.tensao || "SEM TENSÃO CADASTRADO"}
+                />
+              </div>
+
+              <div>
+                <label className="font-semibold">Gás: </label>
+                <input
+                  name="gas"
+                  type="text"
+                  className="w-full p-2 border rounded"
+                  required
+                  defaultValue={equipamentoSelecionado.gas || "SEM GÁS CADASTRADO"}
                 />
               </div>
 
