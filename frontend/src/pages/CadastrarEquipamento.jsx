@@ -8,7 +8,7 @@ import { criarEquipamento } from "../services/equipamentoService";
 
 export default function CadastrarEquipamento() {
   const [loading, setLoading] = useState(false);
-    const { contratoId } = useParams();
+  const { contratoId } = useParams();
 
   async function salvarEquipamento(event) {
     event.preventDefault();

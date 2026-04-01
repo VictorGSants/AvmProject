@@ -8,6 +8,7 @@ import {
   Map,
   History
 } from "lucide-react";
+import { EMPRESAID } from "../config/empresa";
 
 export default function Card() {
   const navigate = useNavigate();
@@ -37,11 +38,11 @@ export default function Card() {
     return (
       <div className="min-h-screen bg-gray-100 flex flex-col">
         <main className="flex-grow p-6 grid grid-cols-2 sm:grid-cols-3 gap-4">
-
-          <CardItem title="Criar Nova OS" icon={PlusCircle} path={`/gestor/${contratoId}/novaOs`} />
+          <CardItem title="Agenda" icon={CalendarCheck} path={`/gestor/${EMPRESAID}/agenda`} />
+          <CardItem title="Criar Nova OS" icon={PlusCircle} path={`/gestor/${EMPRESAID}/novaOs`} />
           <CardItem title="Cadastrar Equipamento" icon={AirVentIcon} path={`/gestor/${contratoId}/cadastrarEquipamento`} />
           <CardItem title="Histórico" icon={History} path={`/gestor/${contratoId}/historico`} />
-          <CardItem title="PMOC" icon={ClipboardList} path={`/gestor/${contratoId}/pmoc`} />
+          <CardItem title="PMOC (S)" icon={ClipboardList} path={`/gestor/${contratoId}/pmoc`} />
           <CardItem title="Editar Equipamento" icon={PenBox} path={`/gestor/${contratoId}/editarEquip`} />
           <CardItem title="Mapa" icon={Map} path={`/gestor/${contratoId}/mapa`} />
 

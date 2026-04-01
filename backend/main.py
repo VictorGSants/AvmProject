@@ -70,7 +70,7 @@ CHECKLISTS = {
         ("Verificar funcionamento da bomba de drenagem ", "S"),
         ("Verificar, limpar unidade condensadora externa", "S"),
     ],
-    "PISO-TETO": [
+    "PISO TETO": [
         ("Verificar, limpar filtros", "M"),
         ("Verificar e reapertar parafusos dos bornes eletricos", "M"),
         ("Verificar , limpar carenagem", "M"),
@@ -333,7 +333,7 @@ def processar_dados_pmoc(empresa_id, contrato_id):
                 data_coluna_ref = ano_da_coluna * 100 + num_mes_coluna
                 
                 # A COLUNA JÁ PASSOU OU É AGORA? (Ex: Nov/25 <= Mar/26 -> TRUE)
-                is_passado_ou_atual = data_coluna_ref < data_atual_referencia
+                is_passado_ou_atual = data_coluna_ref <= data_atual_referencia
                 
                 # A FREQUÊNCIA PEDE NESTE MÊS? (0=Nov, 1=Dez, 2=Jan, 3=Fev...)
                 deve_pelo_plano = calcular_marcao_automatica(freq, i)

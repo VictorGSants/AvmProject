@@ -12,8 +12,8 @@ import EditarEquip from "../pages/EditarEquip";
 import MapaHospital from "../pages/mapaHospital";
 import HistoricoDeManutencoes from "../pages/HistoricoDeManutencoes";
 import PmocTecnico from "../pages/PmocTecnico"
-import PatraoContratos from "../pages/PatraoContratos";
 import ContratoProvider  from "../context/ContratoContext";
+import Agenda from "../pages/Agenda";
 
 
 export default function RouterApp() {
@@ -29,7 +29,7 @@ export default function RouterApp() {
             path="/patrao"
             element={
               <ProtectedRoutes>
-                <PatraoContratos />
+                <HomePageGestor />
               </ProtectedRoutes>
             }
           />
@@ -45,10 +45,18 @@ export default function RouterApp() {
           />
 
           <Route
-            path="/gestor/:contratoId/novaOs"
+            path="/gestor/:empresaId/novaOs"
             element={
               <ProtectedRoutes>
                 <NovaOs />
+              </ProtectedRoutes>
+            }
+          />
+          <Route
+            path="/gestor/:empresaId/agenda"
+            element={
+              <ProtectedRoutes>
+                <Agenda />
               </ProtectedRoutes>
             }
           />
@@ -90,7 +98,7 @@ export default function RouterApp() {
           />
 
           <Route
-            path="/gestor/:contratoId/mapa"
+            path="/gestor/:contratoId/pmoc/mapa"
             element={
               <ProtectedRoutes>
                 <MapaHospital />
@@ -113,7 +121,7 @@ export default function RouterApp() {
             path="/tecnico/:contratoId/pmoc"
             element={
               <ProtectedRoutes>
-                <PmocTecnico />
+                <PmocGestor />
               </ProtectedRoutes>
             }
           />
