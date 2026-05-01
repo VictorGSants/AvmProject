@@ -8,7 +8,7 @@ export default function EditarEquip() {
   const [equipamentosPorBloco, setEquipamentosPorBloco] = useState({});
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
   const [modalAberto, setModalAberto] = useState(false);
-  const { contratoId } = useParams();
+  const { contratoId, empresaId } = useParams();
 
 if (!contratoId) {
    return <div>Erro ao carregar contrato...</div>;
@@ -23,7 +23,7 @@ if (!contratoId) {
 
     if (!contratoId) return;
 
-    const equipamentos = await listarEquipamentos(contratoId);
+    const equipamentos = await listarEquipamentos(contratoId, empresaId);
     console.log("equipamentos:", equipamentos);
 
     const blocos = {};
@@ -90,7 +90,7 @@ if (!contratoId) {
   };
 
   try {
-    await atualizarEquipamento(contratoId, equipamentoSelecionado.id, novosDados);
+    await atualizarEquipamento(contratoId, empresaId, equipamentoSelecionado.id, novosDados);
 
     alert("DADOS ATUALIZADOS");
 
@@ -109,7 +109,7 @@ async function deletar() {
     return;
 
   try {
-    await deletarEquipamento(contratoId, equipamentoSelecionado.id);
+    await deletarEquipamento(contratoId, empresaId, equipamentoSelecionado.id);
 
     alert("Equipamento excluído");
 
@@ -191,7 +191,7 @@ async function deletar() {
               <div>
                 <label className="font-medium">Código Cadastrado: </label>
                 <input
-                  name="codigoEquipamento"
+                  name="codigo"
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   required
@@ -202,7 +202,7 @@ async function deletar() {
               <div>
                 <label className="font-medium">Nome Cadastrado: </label>
                 <input
-                  name="nomeEquipamento"
+                  name="nome"
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   required
@@ -213,7 +213,7 @@ async function deletar() {
               <div>
                 <label className="font-medium">Bloco Cadastrado: </label>
                 <input
-                  name="blocoCadastrado"
+                  name="bloco"
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   required
@@ -224,7 +224,7 @@ async function deletar() {
               <div>
                 <label className="font-medium">Local Cadastrado: </label>
                 <input
-                  name="localCadastrado"
+                  name="local"
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   required
@@ -235,7 +235,7 @@ async function deletar() {
               <div>
                 <label className="font-medium">Fabricante Cadastrado: </label>
                 <input
-                  name="fabricanteCadastrado"
+                  name="fabricante"
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   required
@@ -246,7 +246,7 @@ async function deletar() {
               <div>
                 <label className="font-medium">Modelo Cadastrado: </label>
                 <input
-                  name="modeloCadastrado"
+                  name="modelo"
                   type="text"
                   className="w-full p-2 border rounded-lg"
                   required

@@ -10,18 +10,19 @@ export default function HistoricoManutencoes() {
   const [equipamentoSelecionado, setEquipamentoSelecionado] = useState(null);
   const [manutencoes, setManutencoes] = useState([]);
   const [drawerAberto, setDrawerAberto] = useState(false);
-  const { contratoId } = useParams();
+  const { contratoId, empresaId } = useParams();
 
   // ---------------------- CARREGA EQUIPAMENTOS ----------------------
   useEffect(() => {
 
   async function carregarEquipamentos() {
      console.log("contratoId:", contratoId);
+     console.log("empresaId:", empresaId)
      
 
     if (!contratoId) return;
 
-    const equipamentos = await listarEquipamentos(contratoId);
+    const equipamentos = await listarEquipamentos(contratoId, empresaId);
     console.log("equipamentos:", equipamentos);
 
     const blocos = {};
@@ -57,7 +58,7 @@ export default function HistoricoManutencoes() {
     setEquipamentoSelecionado(eq);
 
     try {
-      const ref = collection(db, "equipamentos", eq.id, "manutencoes");
+      const ref = collection(db, "empresas", empresaId, "contratos", contratoId, "equipamentos", eq.id , "manutencoes");
       const snap = await getDocs(ref);
 
       const lista = snap.docs.map((d) => {
@@ -150,7 +151,7 @@ export default function HistoricoManutencoes() {
                   className="p-4 bg-gray-100 rounded-xl shadow-inner"
                 >
                   <p className="font-semibold text-lg">
-                    {m.descricao || ""}
+                    <b>Descrição: </b>{m.descricao || "TESTE"}
                   </p>
 
                   <p className="text-gray-700">
@@ -160,6 +161,11 @@ export default function HistoricoManutencoes() {
                   <p className="text-gray-600 mt-1">
                     <b>Data:</b>{" "}
                     {m.data ? m.data.toLocaleDateString() : "(sem data)"}
+                  </p>
+
+                  <p className="text-gray-600 mt-1">
+                    <b>Técnico Responsavel: </b>{" "}
+                    {m.tecnico || "André Gonçalves"}
                   </p>
                 </div>
               ))}

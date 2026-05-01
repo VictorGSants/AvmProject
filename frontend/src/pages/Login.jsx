@@ -31,26 +31,30 @@ export default function AuthLogin() {
       const userCredential = await signInWithEmailAndPassword(auth, email, senha);
 
       const loggedUser = userCredential.user;
+
+      // pegar todos usuarios
       const ref = doc(db, "usuarios", loggedUser.uid);
       const snap = await getDoc(ref);
+      const dados = snap.data();
+      localStorage.setItem("tipoUsuario", dados.tipo);  
+      localStorage.setItem("empresa", dados.empresaId);
+      localStorage.setItem("uid", dados.nome);
+      console.log(dados)
+      
 
       if (!snap.exists()) {
         setErro("Usuário não encontrado no banco!");
         return;
       }
-
-      const dados = snap.data();
-      localStorage.setItem("tipoUsuario", dados.tipo);
-      localStorage.setItem("email", loggedUser.email);
-
-      if (dados.tipo === "gestor") {
-        navigate("/gestor/piracicaba");
-      }
-      else if (dados.tipo === "patrao") {
-        navigate("/patrao")
-      }
-      else if(dados.tipo === "tecnico"){
-        navigate("/tecnico/piracicaba");
+      // redirecionamento para clientes
+      if (dados.tipo == "cliente") {
+      const refCliente = doc(db, "empresas", dados.empresaId, "clientes", loggedUser.uid);
+      const snapCliente = await getDoc(refCliente);
+      const dadosCliente = snapCliente.data();
+      localStorage.setItem("empresaId", dadosCliente.contratoId)
+        navigate(`/cliente/${dados.empresaId}/${dadosCliente.contratoId}`);
+      }else{
+        navigate(`/${dados.tipo}/${dados.empresaId}`)
       }
 
     } catch (error) {

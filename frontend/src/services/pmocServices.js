@@ -31,35 +31,23 @@ export async function registrarPMOC(
   contratoId,
   equipamento,
   descricao,
-  observacao
+  observacao,
+  assinatura = null
 ) {
-
-  const refEquip = doc(
-    equipamentosRef(empresaId, contratoId),
-    equipamento.id
-  );
-
+  const refEquip = doc(equipamentosRef(empresaId, contratoId), equipamento.id);
   const agora = new Date();
+  const proxima = calcularProximaManutencao(agora, equipamento.periodicidade || "mensal");
 
-  const proxima = calcularProximaManutencao(
-    agora,
-    equipamento.periodicidade || "mensal"
-  );
+  await addDoc(collection(refEquip, "manutencoes"), {
+    tipo: "PMOC",
+    descricao,
+    observacao,
+    assinatura,
+    data: serverTimestamp(),
+  });
 
-  // salva histórico
-  await addDoc(
-    collection(refEquip, "manutencoes"),
-    {
-      tipo: "PMOC",
-      descricao,
-      observacao,
-      data: serverTimestamp()
-    }
-  );
-
-  // atualiza equipamento
   await updateDoc(refEquip, {
     ultimaManutencao: serverTimestamp(),
-    proximaManutencao: proxima
+    proximaManutencao: proxima,
   });
 }

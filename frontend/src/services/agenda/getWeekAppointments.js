@@ -1,10 +1,12 @@
 import { db } from "../../config/firebaseConfig";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, Timestamp } from "firebase/firestore";
 import { getStartOfWeek, getEndOfWeek } from "./weekRange";
-import { Timestamp } from "firebase/firestore";
-export async function getWeekAppointments(empresaId) {
-   const inicio = Timestamp.fromDate(getStartOfWeek());
-   const fim = Timestamp.fromDate(getEndOfWeek());
+
+// `semanaBase` é passado pelo hook useAgenda para buscar qualquer semana,
+// não apenas a atual.
+export async function getWeekAppointments(empresaId, semanaBase) {
+   const inicio = Timestamp.fromDate(getStartOfWeek(semanaBase));
+   const fim = Timestamp.fromDate(getEndOfWeek(semanaBase));
    
    const ref = collection(db, "empresas", empresaId, "agendamentos");
 
