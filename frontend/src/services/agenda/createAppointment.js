@@ -8,6 +8,7 @@ export async function createAppointment(empresaId, dados) {
     inicio: Timestamp.fromDate(dados.inicio),
     fim: Timestamp.fromDate(dados.fim),
     tecnicos: dados.tecnicos,
+    contratoId: dados.contratoId || null,
     tipo: dados.tipo,
     clienteNome: dados.clienteNome || "",
     endereco: dados.endereco || "",

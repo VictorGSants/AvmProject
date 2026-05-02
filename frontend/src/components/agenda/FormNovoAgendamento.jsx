@@ -13,6 +13,7 @@ const TIPOS_SERVICO = [
 
 const ESTADO_INICIAL = {
   tecnicosSelecionados: [],
+  contratoId: "",
   data: "",
   horaInicio: "",
   horaFim: "",
@@ -23,7 +24,7 @@ const ESTADO_INICIAL = {
   veiculo: "",
 };
 
-export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnicos }) {
+export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnicos, contratos = [] }) {
   const [form, setForm] = useState(ESTADO_INICIAL);
   const [erros, setErros] = useState({});
   const [salvando, setSalvando] = useState(false);
@@ -31,6 +32,15 @@ export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnic
   function atualizar(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }));
     if (erros[campo]) setErros(prev => ({ ...prev, [campo]: null }));
+  }
+
+  function selecionarContrato(contratoId) {
+    const contrato = contratos.find(c => c.id === contratoId);
+    setForm(prev => ({
+      ...prev,
+      contratoId,
+      clienteNome: contrato ? contrato.nome : "",
+    }));
   }
 
   function toggleTecnico(id) {
@@ -64,6 +74,7 @@ export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnic
     try {
       await onSalvar({
         tecnicos: form.tecnicosSelecionados,
+        contratoId: form.contratoId || null,
         inicio: new Date(`${form.data}T${form.horaInicio}`),
         fim: new Date(`${form.data}T${form.horaFim}`),
         tipo: form.tipo,
@@ -163,6 +174,23 @@ export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnic
             </select>
             {erros.tipo && <p className="text-red-500 text-xs mt-1">{erros.tipo}</p>}
           </div>
+
+          {/* Contrato */}
+          {contratos.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Contrato</label>
+              <select
+                value={form.contratoId}
+                onChange={e => selecionarContrato(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]"
+              >
+                <option value="">— Selecione um contrato —</option>
+                {contratos.map(c => (
+                  <option key={c.id} value={c.id}>{c.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Cliente */}
           <div>

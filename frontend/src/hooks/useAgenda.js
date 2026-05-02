@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { getWeekAppointments } from "../services/agenda/getWeekAppointments";
 import { getTecnicos } from "../services/tecService";
+import { contracts as getContratos } from "../services/contracts/contractsService";
 import { createAppointment } from "../services/agenda/createAppointment";
 import { deleteAppointment } from "../services/agenda/deleteAppointment";
 import { updateAppointment } from "../services/agenda/updateAppointment";
@@ -16,6 +17,7 @@ export function useAgenda() {
 
   const [agendamentos, setAgendamentos] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
+  const [contratos, setContratos] = useState([]);
   // semanaBase sempre aponta para a segunda-feira da semana exibida
   const [semanaBase, setSemanaBase] = useState(() => getStartOfWeek());
   const [carregando, setCarregando] = useState(false);
@@ -27,12 +29,14 @@ export function useAgenda() {
     setCarregando(true);
     setErro(null);
     try {
-      const [agendamentosData, tecnicosData] = await Promise.all([
+      const [agendamentosData, tecnicosData, contratosData] = await Promise.all([
         getWeekAppointments(empresaId, semanaBase),
         getTecnicos(empresaId),
+        getContratos(empresaId),
       ]);
       setAgendamentos(agendamentosData);
       setTecnicos(tecnicosData);
+      setContratos(contratosData);
     } catch {
       setErro("Erro ao carregar dados da agenda. Verifique sua conexão.");
     } finally {
@@ -97,6 +101,7 @@ export function useAgenda() {
   return {
     agendamentos,
     tecnicos,
+    contratos,
     semanaBase,
     carregando,
     erro,

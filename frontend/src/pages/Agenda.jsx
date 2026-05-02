@@ -13,6 +13,7 @@ export default function Agenda() {
   const {
     agendamentos,
     tecnicos,
+    contratos,
     semanaBase,
     carregando,
     erro,
@@ -113,6 +114,7 @@ export default function Agenda() {
         onFechar={() => setModalNovoAberto(false)}
         onSalvar={criarAgendamento}
         tecnicos={tecnicos}
+        contratos={contratos}
       />
 
       {/* Modal: detalhes do agendamento clicado
