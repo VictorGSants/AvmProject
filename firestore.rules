@@ -2,9 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Qualquer usuário autenticado pode listar usuários da mesma empresa
-    // (necessário para buscar técnicos via query por empresaId).
-    // Escrita bloqueada — só o Admin SDK cria/edita perfis.
+    // Leitura liberada para autenticados — necessário para queries de técnicos por empresa.
     match /usuarios/{userId} {
       allow read: if request.auth != null;
       allow write: if false;

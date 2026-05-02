@@ -4,6 +4,7 @@ import Modal from "../Modal";
 import AssinaturaPad from "./AssinaturaPad";
 import FotoUpload from "./FotoUpload";
 import { createOS } from "../../services/os/osService";
+import { getAppointment } from "../../services/agenda/getAppointment";
 import {
   MapPin, Clock, User, FileText, CheckCircle,
   Play, Trash2, ChevronRight, Car, ArrowLeft,
@@ -94,12 +95,29 @@ export default function DetalheAgendamento({ evento, tecnicos, aberto, onFechar,
   async function finalizarComAssinatura(assinaturaBase64) {
     setSalvando(true);
     try {
+      // Busca o estado atual no Firestore para evitar OS duplicada
+      // caso outro técnico do mesmo agendamento já tenha finalizado
+      const atual = await getAppointment(empresaId, evento.id);
+      if (atual?.status === "concluido") {
+        alert(`Este serviço já foi finalizado.\nOS gerada: ${atual.osNumero ?? ""}`);
+        handleFechar();
+        return;
+      }
+
       const tecnicoNome = localStorage.getItem("uid") || "";
+
+      // Monta lista completa de técnicos do agendamento para análise futura
+      const tecnicosDoEvento = (evento.tecnicos || []).map(id => {
+        const tec = tecnicos.find(t => t.id === id);
+        return { id, nome: tec?.nome || "" };
+      });
 
       // Gera a Ordem de Serviço no Firestore
       const { numero } = await createOS(empresaId, {
         agendamentoId:        evento.id,
         tecnicoNome,
+        tecnicoIds:           tecnicosDoEvento.map(t => t.id),
+        tecnicosNomes:        tecnicosDoEvento.map(t => t.nome),
         clienteNome:          evento.clienteNome,
         endereco:             evento.endereco,
         tipoServico:          evento.tipo,

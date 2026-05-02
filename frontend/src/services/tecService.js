@@ -1,8 +1,6 @@
 import { db } from ".././config/firebaseConfig";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
-// Técnicos são usuários cadastrados na coleção raiz `usuarios` com tipo "tecnico".
-// Filtramos pelo empresaId para trazer só os técnicos desta empresa.
 export async function getTecnicos(empresaId) {
     const q = query(
         collection(db, "usuarios"),
