@@ -15,6 +15,13 @@ import { getStartOfWeek } from "../services/agenda/weekRange";
 export function useAgenda() {
   const { empresaId } = useParams();
 
+  // Técnico só vê os agendamentos em que está escalado.
+  // Gestor/patrão passa null e recebe tudo.
+  const tipoUsuario = localStorage.getItem("tipoUsuario");
+  const tecnicoId   = tipoUsuario === "tecnico"
+    ? localStorage.getItem("usuarioId")
+    : null;
+
   const [agendamentos, setAgendamentos] = useState([]);
   const [tecnicos, setTecnicos] = useState([]);
   const [contratos, setContratos] = useState([]);
@@ -30,7 +37,7 @@ export function useAgenda() {
     setErro(null);
     try {
       const [agendamentosData, tecnicosData, contratosData] = await Promise.all([
-        getWeekAppointments(empresaId, semanaBase),
+        getWeekAppointments(empresaId, semanaBase, tecnicoId),
         getTecnicos(empresaId),
         getContratos(empresaId),
       ]);

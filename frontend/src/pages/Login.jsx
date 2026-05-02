@@ -36,9 +36,10 @@ export default function AuthLogin() {
       const ref = doc(db, "usuarios", loggedUser.uid);
       const snap = await getDoc(ref);
       const dados = snap.data();
-      localStorage.setItem("tipoUsuario", dados.tipo);  
+      localStorage.setItem("tipoUsuario", dados.tipo);
       localStorage.setItem("empresa", dados.empresaId);
       localStorage.setItem("uid", dados.nome);
+      localStorage.setItem("usuarioId", loggedUser.uid);
       console.log(dados)
       
 
