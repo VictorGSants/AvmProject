@@ -44,7 +44,8 @@ export function useAgenda() {
       setAgendamentos(agendamentosData);
       setTecnicos(tecnicosData);
       setContratos(contratosData);
-    } catch {
+    } catch (e) {
+      console.error("[useAgenda] Erro ao carregar dados:", e);
       setErro("Erro ao carregar dados da agenda. Verifique sua conexão.");
     } finally {
       setCarregando(false);
