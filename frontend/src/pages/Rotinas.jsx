@@ -1,7 +1,11 @@
+import { useState } from "react";
 import Header from "../components/Header";
 import ItemChecklist from "../components/rotinas/ItemChecklist";
 import { useRotinas, VEICULOS } from "../hooks/useRotinas";
-import { RotateCcw, CheckSquare, ClipboardCheck, Car } from "lucide-react";
+import { registrarRotina } from "../services/rotinaService";
+import { useParams } from "react-router-dom";
+import { toast } from "sonner";
+import { RotateCcw, CheckSquare, ClipboardCheck, Car, ClipboardList, Loader2 } from "lucide-react";
 
 const COR_CATEGORIA = {
   EPIs:           "bg-red-100 text-red-700 border-red-200",
@@ -20,13 +24,46 @@ const ICONE_VEICULO = {
 };
 
 export default function Rotinas() {
+  const { empresaId } = useParams();
   const {
     checklist, categorias, marcados, veiculo, setVeiculo,
     total, totalMarcado, toggleItem, resetar,
   } = useRotinas();
 
+  const [registrando, setRegistrando] = useState(false);
+  const [registro, setRegistro] = useState(null); // { nome, hora } após salvar
+
   const porcentagem = total > 0 ? Math.round((totalMarcado / total) * 100) : 0;
   const tudoOk = total > 0 && totalMarcado === total;
+
+  async function handleRegistrar() {
+    if (!veiculo) { toast.error("Selecione o veículo antes de registrar."); return; }
+    if (totalMarcado === 0) { toast.error("Marque ao menos um item antes de registrar."); return; }
+
+    setRegistrando(true);
+    try {
+      const nome = localStorage.getItem("uid") || "Técnico";
+      const uid  = localStorage.getItem("usuarioId") || "";
+
+      await registrarRotina(empresaId, {
+        tecnicoId:    uid,
+        tecnicoNome:  nome,
+        veiculo,
+        itensMarcados: marcados,
+        totalItens:   total,
+        totalMarcado,
+      });
+
+      const hora = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setRegistro({ nome, hora });
+      toast.success("Rotina registrada!");
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao registrar rotina.");
+    } finally {
+      setRegistrando(false);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -140,6 +177,38 @@ export default function Rotinas() {
             );
           })}
         </div>
+
+        {/* Botão registrar */}
+        {veiculo && (
+          <div className="mt-8">
+            {registro ? (
+              <div className="bg-green-50 border border-green-200 rounded-2xl p-5 text-center space-y-1">
+                <CheckSquare size={28} className="text-green-500 mx-auto" />
+                <p className="font-bold text-green-800">Rotina registrada!</p>
+                <p className="text-sm text-green-700">
+                  por <span className="font-semibold">{registro.nome}</span> às <span className="font-semibold">{registro.hora}</span>
+                </p>
+                <p className="text-xs text-green-600">{totalMarcado} de {total} itens verificados · {veiculo}</p>
+              </div>
+            ) : (
+              <button
+                onClick={handleRegistrar}
+                disabled={registrando || totalMarcado === 0}
+                className={`w-full flex items-center justify-center gap-2 py-4 rounded-2xl font-bold text-base transition-all active:scale-95
+                  ${tudoOk
+                    ? "bg-green-600 hover:bg-green-700 text-white shadow-md"
+                    : "bg-[#7b8cd4] hover:bg-[#6677be] text-white shadow-sm"
+                  }
+                  disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {registrando
+                  ? <Loader2 size={18} className="animate-spin" />
+                  : <ClipboardList size={18} />}
+                {registrando ? "Registrando..." : tudoOk ? "Registrar Rotina Completa" : `Registrar Rotina (${totalMarcado}/${total})`}
+              </button>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

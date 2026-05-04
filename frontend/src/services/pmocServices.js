@@ -1,4 +1,4 @@
-import { getDocs, updateDoc, doc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { getDocs, updateDoc, doc, addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore";
 import { equipamentosRef } from "../config/firebasePaths";
 import { db } from "../config/firebaseConfig";
 
@@ -50,4 +50,37 @@ export async function registrarPMOC(
     ultimaManutencao: serverTimestamp(),
     proximaManutencao: proxima,
   });
+}
+
+export async function registrarPMOCComData(
+  empresaId,
+  contratoId,
+  equipamento,
+  descricao,
+  data,
+  observacao = ""
+) {
+  const refEquip = doc(equipamentosRef(empresaId, contratoId), equipamento.id);
+  const proxima = calcularProximaManutencao(data, equipamento.periodicidade || "mensal");
+  const tsData = Timestamp.fromDate(data);
+
+  await addDoc(collection(refEquip, "manutencoes"), {
+    tipo: "PMOC",
+    descricao,
+    observacao,
+    assinatura: null,
+    data: tsData,
+  });
+
+  await updateDoc(refEquip, {
+    ultimaManutencao: tsData,
+    proximaManutencao: proxima,
+  });
+}
+
+export async function registrarLotePMOC(empresaId, contratoId, equipamentos, descricao, data, onProgress) {
+  for (let i = 0; i < equipamentos.length; i++) {
+    await registrarPMOCComData(empresaId, contratoId, equipamentos[i], descricao, data);
+    if (onProgress) onProgress(i + 1, equipamentos.length);
+  }
 }

@@ -1,5 +1,6 @@
 import os
 import io
+import json
 from datetime import datetime
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response
@@ -9,15 +10,20 @@ from firebase_admin import credentials, firestore
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 # IMPORTANTE: Instale com pip install PyPDF2
-from PyPDF2 import PdfMerger, PdfReader 
+from PyPDF2 import PdfMerger, PdfReader
 
 # ----------------- CONFIGURAÇÃO -----------------
 load_dotenv()
 
 # Inicializa Firebase
-SERVICE_ACCOUNT = os.getenv("FIREBASE_SERVICE_ACCOUNT", "serviceAccountKey.json")
+# Em produção: FIREBASE_SERVICE_ACCOUNT_JSON contém o conteúdo do JSON
+# Em desenvolvimento local: lê o arquivo serviceAccountKey.json
 if not firebase_admin._apps:
-    cred = credentials.Certificate(SERVICE_ACCOUNT)
+    sa_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+    if sa_json:
+        cred = credentials.Certificate(json.loads(sa_json))
+    else:
+        cred = credentials.Certificate(os.getenv("FIREBASE_SERVICE_ACCOUNT", "serviceAccountKey.json"))
     firebase_admin.initialize_app(cred)
 db = firestore.client()
 
