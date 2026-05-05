@@ -300,9 +300,10 @@ def processar_dados_pmoc(empresa_id, contrato_id):
         eq = doc.to_dict()
         eq_id = doc.id
         
-        # --- 2. HISTÓRICO (Mantém igual, só pra exibir lá em baixo) ---
+        # --- 2. HISTÓRICO + DATA DA ÚLTIMA MANUTENÇÃO ---
         logs = contrato_ref.collection("equipamentos").document(eq_id).collection("manutencoes").order_by("data", direction=firestore.Query.DESCENDING).stream()
         lista_historico = []
+        data_ultima_manutencao = 0  # formato YYYYMM, 0 = sem registro
 
         for l in logs:
             d = l.to_dict()
@@ -316,8 +317,11 @@ def processar_dados_pmoc(empresa_id, contrato_id):
                         data_obj = datetime.fromisoformat(raw_date.replace('Z', ''))
                     except:
                         pass
-            
+
             if data_obj:
+                ref = data_obj.year * 100 + data_obj.month
+                if ref > data_ultima_manutencao:
+                    data_ultima_manutencao = ref
                 lista_historico.append({
                     "data_formatada": data_obj.strftime("%d/%m/%Y"),
                     "descricao": d.get("descricao", "Manutenção Preventiva"),
@@ -326,33 +330,32 @@ def processar_dados_pmoc(empresa_id, contrato_id):
 
         eq['manutencoes'] = lista_historico
 
-        # --- 3. REGRA DO X (FORÇAR PASSADO E ATUAL) ---
+        # --- 3. REGRA DO X (baseada na última manutenção real por equipamento) ---
         checklist_padrao = get_checklist_for_equipment(eq)
         tasks_processadas = []
-        
+
         for desc, freq in checklist_padrao:
             task_info = {"desc": desc, "freq": freq, "meses_feitos": []}
-            
+
             for i, mes_nome in enumerate(header_nomes):
                 num_mes_coluna = header_nums[i]
-                
+
                 # Acha o ano desta coluna
                 ano_da_coluna = ano_inicio_ciclo
                 if num_mes_coluna < mes_inicio_num:
                     ano_da_coluna = ano_inicio_ciclo + 1
-                
+
                 data_coluna_ref = ano_da_coluna * 100 + num_mes_coluna
-                
-                # A COLUNA JÁ PASSOU OU É AGORA? (Ex: Nov/25 <= Mar/26 -> TRUE)
-                is_passado_ou_atual = data_coluna_ref <= data_atual_referencia
-                
-                # A FREQUÊNCIA PEDE NESTE MÊS? (0=Nov, 1=Dez, 2=Jan, 3=Fev...)
+
+                # Marca até o mês da última manutenção registrada (não o mês atual)
+                is_ate_ultima_manutencao = data_ultima_manutencao > 0 and data_coluna_ref <= data_ultima_manutencao
+
+                # A FREQUÊNCIA PEDE NESTE MÊS?
                 deve_pelo_plano = calcular_marcao_automatica(freq, i)
 
-                # SE O MÊS CHEGOU E O PLANO PEDE, MARCA O X! (Não olha pro BD)
-                if is_passado_ou_atual and deve_pelo_plano:
+                if is_ate_ultima_manutencao and deve_pelo_plano:
                     task_info["meses_feitos"].append(mes_nome)
-            
+
             tasks_processadas.append(task_info)
         
         eq['tasks_processadas'] = tasks_processadas
