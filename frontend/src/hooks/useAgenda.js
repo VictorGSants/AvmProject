@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
+import { Timestamp } from "firebase/firestore";
 import { getWeekAppointments } from "../services/agenda/getWeekAppointments";
 import { getTecnicos } from "../services/tecService";
 import { contracts as getContratos } from "../services/contracts/contractsService";
@@ -100,6 +101,29 @@ export function useAgenda() {
     );
   }
 
+  // Edita os dados principais de um agendamento com validação de conflito.
+  // Exclui o próprio agendamento da checagem para não conflitar consigo mesmo.
+  async function editarAgendamento(agendamentoId, dados) {
+    const outros = agendamentos.filter(a => a.id !== agendamentoId);
+    for (const tecId of dados.tecnicos) {
+      const eventosDoTecnico = outros.filter(a => a.tecnicos?.includes(tecId));
+      if (temConflito({ inicio: dados.inicio, fim: dados.fim }, eventosDoTecnico)) {
+        const tec = tecnicos.find(t => t.id === tecId);
+        throw new Error(`Conflito de horário para o técnico ${tec?.nome ?? tecId}.`);
+      }
+    }
+    await updateAppointment(empresaId, agendamentoId, dados);
+    // Converte Date → Timestamp para manter o formato esperado pelos componentes
+    const dadosNormalizados = {
+      ...dados,
+      inicio: Timestamp.fromDate(dados.inicio),
+      fim:    Timestamp.fromDate(dados.fim),
+    };
+    setAgendamentos(prev =>
+      prev.map(a => a.id === agendamentoId ? { ...a, ...dadosNormalizados } : a)
+    );
+  }
+
   async function excluirAgendamento(agendamentoId) {
     await deleteAppointment(empresaId, agendamentoId);
     // Atualização otimista: remove do estado local sem rebuscar o servidor
@@ -118,6 +142,7 @@ export function useAgenda() {
     irParaHoje,
     criarAgendamento,
     atualizarAgendamento,
+    editarAgendamento,
     excluirAgendamento,
   };
 }

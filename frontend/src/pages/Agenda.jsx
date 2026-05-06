@@ -22,6 +22,7 @@ export default function Agenda() {
     irParaHoje,
     criarAgendamento,
     atualizarAgendamento,
+    editarAgendamento,
     excluirAgendamento,
   } = useAgenda();
 
@@ -124,8 +125,10 @@ export default function Agenda() {
         aberto={eventoSelecionadoId !== null}
         evento={eventoSelecionado}
         tecnicos={tecnicos}
+        contratos={contratos}
         onFechar={() => setEventoSelecionadoId(null)}
         onAtualizar={atualizarAgendamento}
+        onEditar={editarAgendamento}
         onExcluir={excluirAgendamento}
       />
     </div>

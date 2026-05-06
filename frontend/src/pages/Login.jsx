@@ -49,10 +49,14 @@ export default function AuthLogin() {
       }
       // redirecionamento para clientes
       if (dados.tipo == "cliente") {
-      const refCliente = doc(db, "empresas", dados.empresaId, "clientes", loggedUser.uid);
-      const snapCliente = await getDoc(refCliente);
-      const dadosCliente = snapCliente.data();
-      localStorage.setItem("empresaId", dadosCliente.contratoId)
+        const refCliente = doc(db, "empresas", dados.empresaId, "clientes", loggedUser.uid);
+        const snapCliente = await getDoc(refCliente);
+        if (!snapCliente.exists() || !snapCliente.data()?.contratoId) {
+          setErro("Cliente sem contrato associado. Contacte o administrador.");
+          return;
+        }
+        const dadosCliente = snapCliente.data();
+        localStorage.setItem("empresaId", dadosCliente.contratoId);
         navigate(`/cliente/${dados.empresaId}/${dadosCliente.contratoId}`);
       }else{
         navigate(`/${dados.tipo}/${dados.empresaId}`)
