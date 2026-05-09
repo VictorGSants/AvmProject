@@ -25,7 +25,7 @@ import ListaOrcamentos from "../pages/ListaOrcamentos";
 import NovoOrcamento from "../pages/NovoOrcamento";
 import DetalheOrcamento from "../pages/DetalheOrcamento";
 import GerenciarBiblioteca from "../pages/GerenciarBiblioteca";
-import SeedBiblioteca from "../pages/SeedBiblioteca";
+import SeedBiblioteca from "../pages/Seedbiblioteca";
 
 export default function RouterApp() {
   return (
