@@ -21,6 +21,11 @@ import HomePageCliente from "../pages/HomePageCliente";
 import SelecionarContratos from "../pages/SelecionarContratos";
 import HomePageContratos from "../pages/HomePageContratos";
 import NovoChamado from "../pages/NovoChamado";
+import ListaOrcamentos from "../pages/ListaOrcamentos";
+import NovoOrcamento from "../pages/NovoOrcamento";
+import DetalheOrcamento from "../pages/DetalheOrcamento";
+import GerenciarBiblioteca from "../pages/GerenciarBiblioteca";
+import SeedBiblioteca from "../pages/SeedBiblioteca";
 
 export default function RouterApp() {
   return (
@@ -28,9 +33,15 @@ export default function RouterApp() {
       <ContratoProvider>
         <Routes>
 
+          <Route path="/gestor/:empresaId/seed" element={<ProtectedRoutes><SeedBiblioteca /></ProtectedRoutes>} />
           <Route path="/" element={<AuthLogin />} />
 
           {/* ===== GESTOR / PATRÃO ===== */}
+          <Route path="/gestor/:empresaId/orcamentos"         element={<ProtectedRoutes><ListaOrcamentos /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/orcamentos/novo"    element={<ProtectedRoutes><NovoOrcamento /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/orcamentos/:orcamentoId" element={<ProtectedRoutes><DetalheOrcamento /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/biblioteca"         element={<ProtectedRoutes><GerenciarBiblioteca /></ProtectedRoutes>} />
+
           <Route path="/gestor/:empresaId" element={<ProtectedRoutes><HomePageGestor /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/contratos" element={<ProtectedRoutes><SelecionarContratos /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/:contratoId" element={<ProtectedRoutes><HomePageContratos /></ProtectedRoutes>} />

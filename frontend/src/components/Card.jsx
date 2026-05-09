@@ -52,6 +52,7 @@ export default function Card() {
           <CardItem title="Agenda"   icon={CalendarCheck} path={`/gestor/${empresaId}/agenda`} />
           <CardItem title="Ver OS"   icon={ClipboardList} path={`/gestor/${empresaId}/novaOs`} />
           <CardItem title="Chamados" icon={Bell}          path={`/gestor/${empresaId}/chamados`} />
+          <CardItem title="Orçamentos" icon={FileText} path={`/gestor/${empresaId}/orcamentos`} />
         </main>
       </div>
     );
@@ -119,10 +120,11 @@ export function CardsHome() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <main className="flex-grow p-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <CardItem title="Agenda"   icon={CalendarCheck} path={`/gestor/${empresaId}/agenda`} />
-        <CardItem title="Ver OS"   icon={ClipboardList} path={`/gestor/${empresaId}/novaOs`} />
-        <CardItem title="Contratos" icon={FileText}     path={`/gestor/${empresaId}/contratos`} />
-        <CardItem title="Chamados" icon={Bell}          path={`/gestor/${empresaId}/chamados`} badge={chamadosAbertos} />
+        <CardItem title="Agenda"      icon={CalendarCheck} path={`/gestor/${empresaId}/agenda`} />
+        <CardItem title="Ver OS"      icon={ClipboardList} path={`/gestor/${empresaId}/novaOs`} />
+        <CardItem title="Contratos"   icon={FileText}      path={`/gestor/${empresaId}/contratos`} />
+        <CardItem title="Chamados"    icon={Bell}          path={`/gestor/${empresaId}/chamados`} badge={chamadosAbertos} />
+        <CardItem title="Orçamentos"  icon={FileText}      path={`/gestor/${empresaId}/orcamentos`} />
       </main>
     </div>
   );

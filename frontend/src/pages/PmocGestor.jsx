@@ -150,26 +150,8 @@ export default function PmocGestor() {
     }
   }
 
-  const [baixandoPdf, setBaixandoPdf] = useState(false);
-
-  async function baixarPdf() {
-    setBaixandoPdf(true);
-    try {
-      const resp = await fetch(`${API_URL}/pmoc-pdf/${empresaId}/${contratoId}`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const blob = await resp.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `PMOC_${contrato?.nome || contratoId}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      console.error(e);
-      toast.error("Não foi possível gerar o PDF. Verifique se o servidor está online.");
-    } finally {
-      setBaixandoPdf(false);
-    }
+  function baixarPdf() {
+    window.open(`${API_URL}/pmoc-loading/${empresaId}/${contratoId}`, "_blank");
   }
 
   const equipamentosFiltrados = equipamentos.filter(eq =>
@@ -195,10 +177,9 @@ export default function PmocGestor() {
           <div className="flex gap-2">
             <button
               onClick={baixarPdf}
-              disabled={baixandoPdf}
-              className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+              className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2.5 rounded-xl font-semibold hover:bg-gray-50 transition-colors shadow-sm"
             >
-              {baixandoPdf ? <Loader2 size={16} className="animate-spin" /> : <FileDown size={16} />}
+              <FileDown size={16} />
               Baixar PDF PMOC
             </button>
             <button
