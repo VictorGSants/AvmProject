@@ -27,6 +27,7 @@ export default function NovoOrcamento() {
   const [itensInst, setItensInst]             = useState([]);
   const [opcoesEquip, setOpcoesEquip]         = useState([]);
   const [opcaoIdx, setOpcaoIdx]               = useState(0);
+  const [equipApenasRef, setEquipApenasRef]   = useState(false);
   const [precoFinal, setPrecoFinal]           = useState("");
   const [observacoes, setObservacoes]         = useState("");
   const [processo, setProcesso]               = useState("");
@@ -54,6 +55,7 @@ export default function NovoOrcamento() {
         setItensInst(orc.itensInstalacao   || []);
         setOpcoesEquip(orc.opcoesEquipamento || []);
         setOpcaoIdx(orc.opcaoEquipamentoIdx ?? 0);
+        setEquipApenasRef(orc.equipApenasRef ?? false);
         setPrecoFinal(orc.precoFinalDigitado ?? "");
         setProcesso(orc.processo       || "");
         setObservacoes(orc.observacoes || "");
@@ -79,6 +81,7 @@ export default function NovoOrcamento() {
     );
     setOpcoesEquip(s.opcoesEquipamento || []);
     setOpcaoIdx(0);
+    setEquipApenasRef(false);
     setItensInst(
       s.maoDeObra > 0
         ? [{ descricao: s.nome, qtd: 1, vlUnit: s.maoDeObra }]
@@ -97,8 +100,11 @@ export default function NovoOrcamento() {
     setSalvando(true);
     try {
       // Apenas a opção selecionada entra no total — não a soma de todas
-      const vlOpcao    = opcoesEquip.length > 0 ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
-      const totalEquip = itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
+      // Se equipApenasRef = true, equipamentos são só referência e não somam
+      const vlOpcao    = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
+      const totalEquip = equipApenasRef
+        ? 0
+        : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
       const totalInst  = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
       const totalGeral = parseFloat(precoFinal) || (totalEquip + totalInst);
 
@@ -114,6 +120,7 @@ export default function NovoOrcamento() {
         opcoesEquipamento: opcoesEquip,
         opcaoEquipamentoIdx: opcaoIdx,
         opcaoEquipamentoSelecionada: opcoesEquip.length > 0 ? (opcoesEquip[opcaoIdx] || null) : null,
+        equipApenasRef,
         calculo: { totalEquipamentos: totalEquip, totalInstalacao: totalInst, totalGeral },
         precoFinal: totalGeral,
         precoFinalDigitado: precoFinal,
@@ -188,6 +195,7 @@ export default function NovoOrcamento() {
             itensEquip={itensEquip} setItensEquip={setItensEquip}
             itensInst={itensInst}   setItensInst={setItensInst}
             opcoesEquip={opcoesEquip} opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx}
+            equipApenasRef={equipApenasRef} setEquipApenasRef={setEquipApenasRef}
             onAvancar={() => setStep(3)}
             onVoltar={() => setStep(1)} />
         )}
@@ -196,6 +204,7 @@ export default function NovoOrcamento() {
             cliente={cliente} servico={servico}
             itensEquip={itensEquip} itensInst={itensInst}
             opcoesEquip={opcoesEquip} opcaoIdx={opcaoIdx}
+            equipApenasRef={equipApenasRef}
             precoFinal={precoFinal} processo={processo} observacoes={observacoes}
             descricaoObjeto={descricaoObjeto} garantia={garantia}
             pagamento={pagamento} validade={validade} prazoExecucao={prazoExecucao}
@@ -398,17 +407,20 @@ function removeItemRow(setter, idx) {
   setter((prev) => prev.filter((_, i) => i !== idx));
 }
 
-// Tabela de itens reutilizável
-function ItemSection({ label, items, setter }) {
+// Tabela de itens reutilizável — headerExtra permite colocar um botão extra no cabeçalho
+function ItemSection({ label, items, setter, headerExtra }) {
   const subtotal = items.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
   return (
     <div className="mb-5">
       <div className="flex items-center justify-between mb-2">
         <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">{label}</p>
-        <button onClick={() => addItemRow(setter)}
-          className="flex items-center gap-1 text-xs text-[#1a5ea8] font-semibold">
-          <Plus size={12} /> Adicionar
-        </button>
+        <div className="flex items-center gap-2">
+          {headerExtra}
+          <button onClick={() => addItemRow(setter)}
+            className="flex items-center gap-1 text-xs text-[#1a5ea8] font-semibold">
+            <Plus size={12} /> Adicionar
+          </button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -467,13 +479,17 @@ function ItemSection({ label, items, setter }) {
 }
 
 // ── Seletor de opção de equipamento (escolha única) ────────────────────────
-function OpcoesSection({ opcoes, opcaoIdx, setOpcaoIdx }) {
+function OpcoesSection({ opcoes, opcaoIdx, setOpcaoIdx, apenasRef = false }) {
   if (opcoes.length === 0) return null;
   return (
     <div className="mb-5">
       <div className="mb-2">
         <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Opção de Equipamento</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">Selecione uma opção — apenas o valor selecionado entra no total</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">
+          {apenasRef
+            ? "Equipamento listado apenas para referência — não soma no total"
+            : "Selecione uma opção — apenas o valor selecionado entra no total"}
+        </p>
       </div>
       <div className="space-y-2">
         {opcoes.map((o, i) => (
@@ -501,20 +517,40 @@ function OpcoesSection({ opcoes, opcaoIdx, setOpcaoIdx }) {
 }
 
 // ── Step 3: Itens ──────────────────────────────────────────────────────────
-function StepItens({ itensEquip, setItensEquip, itensInst, setItensInst, opcoesEquip, opcaoIdx, setOpcaoIdx, onAvancar, onVoltar }) {
-  const vlOpcao    = opcoesEquip.length > 0 ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
-  const totalEquip = itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
+function StepItens({ itensEquip, setItensEquip, itensInst, setItensInst, opcoesEquip, opcaoIdx, setOpcaoIdx, equipApenasRef, setEquipApenasRef, onAvancar, onVoltar }) {
+  const vlOpcao    = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
+  const totalEquip = equipApenasRef
+    ? 0
+    : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
   const totalInst  = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
 
   return (
     <div>
       <p className="text-sm text-gray-500 mb-4">Adicione os itens do orçamento</p>
 
-      <OpcoesSection opcoes={opcoesEquip} opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx} />
+      <OpcoesSection opcoes={opcoesEquip} opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx} apenasRef={equipApenasRef} />
+
       <ItemSection
         label={opcoesEquip.length > 0 ? "Acessórios / Materiais" : "Equipamentos – Fornecimento"}
         items={itensEquip} setter={setItensEquip}
+        headerExtra={
+          <button
+            onClick={() => setEquipApenasRef(!equipApenasRef)}
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border transition-colors ${
+              equipApenasRef
+                ? "bg-amber-50 border-amber-300 text-amber-700"
+                : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            {equipApenasRef ? "⚠ Só referência" : "Incluir no total"}
+          </button>
+        }
       />
+      {equipApenasRef && (
+        <p className="text-[10px] text-amber-600 -mt-4 mb-4">
+          Equipamentos listados para referência — <strong>não somam no total</strong>.
+        </p>
+      )}
       <ItemSection label="Instalação / Serviço" items={itensInst} setter={setItensInst} />
 
       <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex justify-between items-center mb-5">
@@ -547,15 +583,17 @@ function Row({ label, value }) {
 
 function StepRevisao({
   cliente, servico, itensEquip, itensInst,
-  opcoesEquip, opcaoIdx,
+  opcoesEquip, opcaoIdx, equipApenasRef,
   precoFinal, processo, observacoes,
   descricaoObjeto, garantia, pagamento, validade, prazoExecucao,
   onPrecoChange, onProcessoChange, onObsChange,
   onDescChange, onGarantiaChange, onPagamentoChange, onValidadeChange, onPrazoChange,
   onVoltar, onRascunho, onFinalizar, salvando, modoEditar,
 }) {
-  const vlOpcao       = opcoesEquip.length > 0 ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
-  const totalEquip    = itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
+  const vlOpcao       = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
+  const totalEquip    = equipApenasRef
+    ? 0
+    : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
   const totalInst     = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
   const totalSugerido = totalEquip + totalInst;
 
@@ -573,10 +611,20 @@ function StepRevisao({
         <div className="border-t border-gray-100 pt-2 mt-1">
           <Row label="Serviço" value={servico?.nome} />
           {opcoesEquip.length > 0 && (
-            <Row label="Equipamento" value={`${opcoesEquip[opcaoIdx]?.nome || "—"} — ${fmtBRL(vlOpcao)}`} />
+            <Row
+              label={`Equipamento${equipApenasRef ? " (ref.)" : ""}`}
+              value={equipApenasRef
+                ? opcoesEquip[opcaoIdx]?.nome || "—"
+                : `${opcoesEquip[opcaoIdx]?.nome || "—"} — ${fmtBRL(opcoesEquip[opcaoIdx]?.valorUnit || 0)}`}
+            />
           )}
           {itensEquip.length > 0 && (
-            <Row label="Acessórios" value={`${itensEquip.length} item(s) — ${fmtBRL(totalEquip - vlOpcao)}`} />
+            <Row
+              label={`Acessórios${equipApenasRef ? " (ref.)" : ""}`}
+              value={equipApenasRef
+                ? `${itensEquip.length} item(s) — não cobrado`
+                : `${itensEquip.length} item(s) — ${fmtBRL(itensEquip.reduce((s,i) => s + (i.vlUnit||0)*(i.qtd||1), 0))}`}
+            />
           )}
           <Row label="Instalação" value={`${itensInst.length} item(s) — ${fmtBRL(totalInst)}`} />
         </div>
