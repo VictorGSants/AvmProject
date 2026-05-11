@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileDown, CheckCircle, XCircle, Send, Trash2, ArrowLeft } from "lucide-react";
+import { FileDown, CheckCircle, XCircle, Send, Trash2, Pencil } from "lucide-react";
 import Header from "../components/Header";
 import {
   obterOrcamento, atualizarStatus, excluirOrcamento,
@@ -186,6 +186,13 @@ export default function DetalheOrcamento() {
         >
           <FileDown size={16} />
           Baixar PDF do Orçamento
+        </button>
+
+        <button
+          onClick={() => navigate(`/gestor/${eId}/orcamentos/${orcamentoId}/editar`)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-[#1a5ea8] border border-[#1a5ea8] bg-white mb-2 active:scale-95 transition-all"
+        >
+          <Pencil size={14} /> Editar orçamento
         </button>
 
         <button

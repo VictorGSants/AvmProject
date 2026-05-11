@@ -15,6 +15,7 @@ const EMPTY = {
   maoDeObra: 0, basePrice: 0, margemLucro: 30,
   valorPorMetroTubulacao: 35, garantia: "12 meses peças / 36 meses compressor",
   materiais: [],
+  opcoesEquipamento: [],
 };
 
 export default function GerenciarBiblioteca() {
@@ -32,7 +33,13 @@ export default function GerenciarBiblioteca() {
 
   async function carregar() {
     setLoading(true);
-    listarBiblioteca(eId).then(setServicos).finally(() => setLoading(false));
+    listarBiblioteca(eId)
+      .then(setServicos)
+      .catch((err) => {
+        console.error("Erro ao carregar biblioteca:", err);
+        toast.error("Erro ao carregar biblioteca: " + err.message);
+      })
+      .finally(() => setLoading(false));
   }
 
   async function handleSalvar(dados) {
@@ -195,8 +202,9 @@ export default function GerenciarBiblioteca() {
 
 // ── Formulário modal ───────────────────────────────────────────────────────
 function FormServico({ dados, categorias, onSalvar, onFechar }) {
-  const [form, setForm] = useState(dados);
+  const [form, setForm]       = useState(dados);
   const [materiais, setMateriais] = useState(dados.materiais || []);
+  const [opcoes, setOpcoes]   = useState(dados.opcoesEquipamento || []);
 
   function set(campo, valor) {
     setForm((prev) => ({ ...prev, [campo]: valor }));
@@ -205,7 +213,6 @@ function FormServico({ dados, categorias, onSalvar, onFechar }) {
   function addMaterial() {
     setMateriais((prev) => [...prev, { nome: "", qtd: 1, valorUnit: 0 }]);
   }
-
   function setMat(i, campo, valor) {
     setMateriais((prev) => {
       const copia = [...prev];
@@ -213,9 +220,22 @@ function FormServico({ dados, categorias, onSalvar, onFechar }) {
       return copia;
     });
   }
-
   function removeMat(i) {
     setMateriais((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function addOpcao() {
+    setOpcoes((prev) => [...prev, { nome: "", valorUnit: 0 }]);
+  }
+  function setOpc(i, campo, valor) {
+    setOpcoes((prev) => {
+      const copia = [...prev];
+      copia[i] = { ...copia[i], [campo]: valor };
+      return copia;
+    });
+  }
+  function removeOpc(i) {
+    setOpcoes((prev) => prev.filter((_, idx) => idx !== i));
   }
 
   function handleSubmit() {
@@ -223,7 +243,7 @@ function FormServico({ dados, categorias, onSalvar, onFechar }) {
       toast.error("Informe o nome do serviço");
       return;
     }
-    onSalvar({ ...form, materiais });
+    onSalvar({ ...form, materiais, opcoesEquipamento: opcoes });
   }
 
   return (
@@ -305,11 +325,51 @@ function FormServico({ dados, categorias, onSalvar, onFechar }) {
             </div>
           </div>
 
+          {/* Opções de Equipamento */}
+          <div>
+            <div className="flex justify-between items-center mb-1">
+              <div>
+                <label className="text-xs font-semibold text-gray-600">Opções de Equipamento</label>
+                <p className="text-[10px] text-gray-400">Cliente escolhe UMA opção — só o valor selecionado entra no total</p>
+              </div>
+              <button onClick={addOpcao} className="text-xs text-[#1a5ea8] font-semibold flex items-center gap-1 flex-shrink-0 ml-2">
+                <Plus size={12} /> Adicionar
+              </button>
+            </div>
+            <div className="space-y-2">
+              {opcoes.map((o, i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <input
+                    type="text" placeholder="Ex: Midea Split 12.000 BTU – Só Fria"
+                    value={o.nome}
+                    onChange={(e) => setOpc(i, "nome", e.target.value)}
+                    className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]"
+                  />
+                  <input
+                    type="number" placeholder="R$" step="0.01" min={0}
+                    value={o.valorUnit}
+                    onChange={(e) => setOpc(i, "valorUnit", parseFloat(e.target.value) || 0)}
+                    className="w-24 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]"
+                  />
+                  <button onClick={() => removeOpc(i)} className="text-red-400 p-1">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              {opcoes.length === 0 && (
+                <p className="text-[10px] text-gray-400 py-1">Nenhuma opção — use para serviços onde o cliente escolhe a marca/modelo.</p>
+              )}
+            </div>
+          </div>
+
           {/* Materiais */}
           <div>
             <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-semibold text-gray-600">Materiais padrão</label>
-              <button onClick={addMaterial} className="text-xs text-[#1a5ea8] font-semibold flex items-center gap-1">
+              <div>
+                <label className="text-xs font-semibold text-gray-600">Materiais / Acessórios padrão</label>
+                <p className="text-[10px] text-gray-400">Itens sempre incluídos (suporte, abraçadeiras, etc.)</p>
+              </div>
+              <button onClick={addMaterial} className="text-xs text-[#1a5ea8] font-semibold flex items-center gap-1 flex-shrink-0 ml-2">
                 <Plus size={12} /> Adicionar
               </button>
             </div>

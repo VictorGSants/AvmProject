@@ -38,8 +38,9 @@ export default function RouterApp() {
 
           {/* ===== GESTOR / PATRÃO ===== */}
           <Route path="/gestor/:empresaId/orcamentos"         element={<ProtectedRoutes><ListaOrcamentos /></ProtectedRoutes>} />
-          <Route path="/gestor/:empresaId/orcamentos/novo"    element={<ProtectedRoutes><NovoOrcamento /></ProtectedRoutes>} />
-          <Route path="/gestor/:empresaId/orcamentos/:orcamentoId" element={<ProtectedRoutes><DetalheOrcamento /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/orcamentos/novo"                       element={<ProtectedRoutes><NovoOrcamento /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/orcamentos/:orcamentoId/editar"      element={<ProtectedRoutes><NovoOrcamento /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/orcamentos/:orcamentoId"             element={<ProtectedRoutes><DetalheOrcamento /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/biblioteca"         element={<ProtectedRoutes><GerenciarBiblioteca /></ProtectedRoutes>} />
 
           <Route path="/gestor/:empresaId" element={<ProtectedRoutes><HomePageGestor /></ProtectedRoutes>} />
