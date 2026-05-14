@@ -37,6 +37,7 @@ export default function NovoOrcamento() {
   const [pagamento, setPagamento]             = useState("15 DDL");
   const [validade, setValidade]               = useState("30 dias");
   const [prazoExecucao, setPrazoExecucao]     = useState("30 dias");
+  const [servicoCategoria, setServicoCategoria] = useState("");
   const [exibirFornecedor, setExibirFornecedor] = useState(false);
   const [fornecedor, setFornecedor]             = useState(null);
 
@@ -67,6 +68,7 @@ export default function NovoOrcamento() {
         setPagamento(orc.pagamento       || "15 DDL");
         setValidade(orc.validade         || "30 dias");
         setPrazoExecucao(orc.prazoExecucao || "30 dias");
+        setServicoCategoria(orc.servicoCategoria || "");
         setExibirFornecedor(orc.exibirDadosFornecedor ?? false);
         setFornecedor(orc.fornecedor || null);
         setStep(2);
@@ -93,7 +95,9 @@ export default function NovoOrcamento() {
         : [{ descricao: "", qtd: 1, vlUnit: 0 }]
     );
     setDescricaoObjeto(s.descricao || "");
-    setGarantia(s.garantia || "12 meses peças / 36 meses compressor");
+    setServicoCategoria(s.categoria || "");
+    const ehManut = /manut|correti|preventi/i.test(s.categoria || s.nome || "");
+    setGarantia(s.garantia || (ehManut ? "90 dias" : "12 meses peças / 36 meses compressor"));
     setPagamento("15 DDL");
     setValidade("30 dias");
     setPrazoExecucao("30 dias");
@@ -131,6 +135,7 @@ export default function NovoOrcamento() {
         precoFinalDigitado: precoFinal,
         processo, observacoes,
         garantia, pagamento, validade, prazoExecucao,
+        servicoCategoria,
         exibirDadosFornecedor: exibirFornecedor,
         fornecedor: fornecedor || null,
         status: rascunho ? "rascunho" : "enviado",

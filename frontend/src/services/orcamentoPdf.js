@@ -63,6 +63,7 @@ export function gerarPdfOrcamento(orcamento) {
     observacoes      = "",
     exibirDadosFornecedor = false,
     fornecedor       = null,
+    servicoCategoria = "",
   } = orcamento;
 
   const fornecedorNome  = fornecedor?.nome  || "";
@@ -293,17 +294,22 @@ export function gerarPdfOrcamento(orcamento) {
   doc.addPage();
   curY = 20;
 
+  // Usa a categoria salva diretamente (mais confiável).
+  // Fallback para regex no nome do serviço em orçamentos antigos sem o campo.
+  const ehManutencao = servicoCategoria
+    ? servicoCategoria !== "instalacao"
+    : /manut|correti|preventi|higien|pmoc/i.test(servicoNome);
+
+  // Cabeçalho da seção com banner colorido
+  doc.setFillColor(...BRAND);
+  doc.rect(14, curY - 3, 182, 12, "F");
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.setTextColor(...BRAND);
-  doc.text("CONDIÇÕES DO SERVIÇO", 14, curY);
-  curY += 2;
-  doc.setDrawColor(...BRAND);
-  doc.setLineWidth(0.4);
-  doc.line(14, curY, 196, curY);
-  curY += 6;
+  doc.setTextColor(255, 255, 255);
+  doc.text("CONDIÇÕES DO SERVIÇO", 105, curY + 5, { align: "center" });
+  curY += 16;
 
-  const condicoes = [
+  const condicoesInstalacao = [
     ["Equipamento",
      "Novo, sem uso, com Certificado INMETRO, Selo Procel A e Manual Técnico. Caixa íntegra no transporte. Substituição em até 15 dias se recusado pelo Fiscal."],
     ["Instalação",
@@ -314,9 +320,24 @@ export function gerarPdfOrcamento(orcamento) {
      `${garantia}, contados da data de recebimento. Atendimento em garantia em até 10 dias corridos.`],
     ["Prazo",
      `Até ${prazoExecucao} corridos após emissão da AF ou assinatura do contrato.`],
-    ["Responsabilidade",
+    ["Responsab.",
      "A CONTRATADA responde por danos causados por seus colaboradores, com direito a contraditório e ampla defesa."],
   ];
+
+  const condicoesManutencao = [
+    ["Execução",
+     "Serviço executado por técnico qualificado, seguindo NBR 16280 e demais normas ABNT/NRs. Uso de EPI completo e equipamentos calibrados. Equipe uniformizada com crachá DSTr/Unicamp."],
+    ["Inclusos",
+     "Materiais de consumo inclusos: produto de limpeza, filtros, vedantes e materiais de acabamento. Peças de reposição cobradas à parte, mediante aprovação prévia do contratante."],
+    ["Garantia",
+     `${garantia}, contados da data de execução do serviço. Atendimento em garantia em até 5 dias úteis após abertura de chamado.`],
+    ["Prazo",
+     `Até ${prazoExecucao} corridos após emissão da AF ou aprovação do orçamento.`],
+    ["Responsab.",
+     "A CONTRATADA responde por danos causados por seus colaboradores durante a execução, com direito a contraditório e ampla defesa."],
+  ];
+
+  const condicoes = ehManutencao ? condicoesManutencao : condicoesInstalacao;
 
   if (observacoes) {
     condicoes.push(["Observações", observacoes]);
@@ -326,12 +347,32 @@ export function gerarPdfOrcamento(orcamento) {
     startY: curY,
     margin: { left: 14, right: 14 },
     body: condicoes,
-    styles: { fontSize: 8, cellPadding: 4, textColor: MID, lineColor: [210, 210, 210], lineWidth: 0.2 },
+    styles: {
+      fontSize: 8,
+      cellPadding: { top: 5, right: 4, bottom: 5, left: 4 },
+      lineColor: [255, 255, 255],
+      lineWidth: 0.5,
+      overflow: "linebreak",
+      valign: "middle",
+    },
     columnStyles: {
-      0: { cellWidth: 28, fontStyle: "bold", textColor: BRAND },
+      0: { cellWidth: 36 },
       1: { cellWidth: "auto" },
     },
-    alternateRowStyles: { fillColor: LIGHT },
+    didParseCell(data) {
+      if (data.column.index === 0) {
+        data.cell.styles.fillColor = BRAND;
+        data.cell.styles.textColor = [255, 255, 255];
+        data.cell.styles.fontStyle = "bold";
+        data.cell.styles.fontSize  = 8;
+        data.cell.styles.halign    = "center";
+        data.cell.styles.valign    = "middle";
+      } else {
+        data.cell.styles.fillColor = data.row.index % 2 === 0 ? [248, 251, 255] : LIGHT;
+        data.cell.styles.textColor = DARK;
+        data.cell.styles.fontStyle = "normal";
+      }
+    },
   });
 
   curY = doc.lastAutoTable.finalY + 10;
