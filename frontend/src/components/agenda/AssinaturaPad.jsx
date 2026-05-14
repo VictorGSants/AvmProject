@@ -76,7 +76,7 @@ export default function AssinaturaPad({ onConfirmar, onCancelar }) {
   return (
     <div className="mt-2">
       <p className="text-xs font-semibold text-gray-500 text-center uppercase tracking-wide mb-2">
-        Solicite a assinatura do cliente / responsável
+        Solicite a assinatura do técnico
       </p>
 
       {/* touch-none impede que o scroll da página interfira no desenho em mobile */}

@@ -40,6 +40,8 @@ function drawPageFooter(doc) {
 //   calculo: { totalEquipamentos, totalInstalacao, totalGeral },
 //   garantia, pagamento, validade, prazoExecucao,
 //   observacoes,
+//   exibirDadosFornecedor: bool,
+//   fornecedorNome, fornecedorCnpj, fornecedorBanco,
 // }
 export function gerarPdfOrcamento(orcamento) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
@@ -59,7 +61,13 @@ export function gerarPdfOrcamento(orcamento) {
     validade         = "30 dias",
     prazoExecucao    = "30 dias",
     observacoes      = "",
+    exibirDadosFornecedor = false,
+    fornecedor       = null,
   } = orcamento;
+
+  const fornecedorNome  = fornecedor?.nome  || "";
+  const fornecedorCnpj  = fornecedor?.cnpj  || "";
+  const fornecedorBanco = fornecedor?.banco  || "";
 
   const dataEmissao = orcamento.criadoEm
     ? new Date(orcamento.criadoEm.seconds * 1000).toLocaleDateString("pt-BR", {
@@ -369,31 +377,52 @@ export function gerarPdfOrcamento(orcamento) {
   doc.line(14, curY, 196, curY);
   curY += 6;
 
-  autoTable(doc, {
-    startY: curY,
-    margin: { left: 14, right: 14 },
-    body: [
-      ["AVM AR Campinas – André Gonçalves Santos",
-       "Fornecedor Parceiro – Equipamentos"],
-      ["Banco do Brasil · Ag. 4038-X · CC 25851-2",
-       "Uniar Comércio de Eletro-Eletrônicos e Serviços LTDA"],
-      ["Favorecido: André Gonçalves Santos",
-       "CNPJ 18.928.807/0001-54"],
-      ["CNPJ 29.969.275/0001-10",
-       "Itaú · Ag. 5589 · CC 12388-3"],
-    ],
-    styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
-    columnStyles: {
-      0: { cellWidth: "auto", fontStyle: "normal" },
-      1: { cellWidth: "auto" },
-    },
-    didParseCell(data) {
-      if (data.row.index === 0) {
-        data.cell.styles.fontStyle = "bold";
-        data.cell.styles.textColor = DARK;
-      }
-    },
-  });
+  if (exibirDadosFornecedor && fornecedorNome) {
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: 14, right: 14 },
+      body: [
+        ["AVM AR Campinas – André Gonçalves Santos",
+         `Fornecedor Parceiro – ${fornecedorNome}`],
+        ["Banco do Brasil · Ag. 4038-X · CC 25851-2",
+         fornecedorNome],
+        ["Favorecido: André Gonçalves Santos",
+         fornecedorCnpj ? `CNPJ ${fornecedorCnpj}` : "—"],
+        ["CNPJ 29.969.275/0001-10",
+         fornecedorBanco || "—"],
+      ],
+      styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
+      columnStyles: {
+        0: { cellWidth: "auto", fontStyle: "normal" },
+        1: { cellWidth: "auto" },
+      },
+      didParseCell(data) {
+        if (data.row.index === 0) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.textColor = DARK;
+        }
+      },
+    });
+  } else {
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: 14, right: 14 },
+      body: [
+        ["AVM AR Campinas – André Gonçalves Santos"],
+        ["Banco do Brasil · Ag. 4038-X · CC 25851-2"],
+        ["Favorecido: André Gonçalves Santos"],
+        ["CNPJ 29.969.275/0001-10"],
+      ],
+      styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
+      columnStyles: { 0: { cellWidth: "auto" } },
+      didParseCell(data) {
+        if (data.row.index === 0) {
+          data.cell.styles.fontStyle = "bold";
+          data.cell.styles.textColor = DARK;
+        }
+      },
+    });
+  }
 
   curY = doc.lastAutoTable.finalY + 16;
 

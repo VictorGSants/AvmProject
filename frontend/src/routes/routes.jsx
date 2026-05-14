@@ -26,6 +26,7 @@ import NovoOrcamento from "../pages/NovoOrcamento";
 import DetalheOrcamento from "../pages/DetalheOrcamento";
 import GerenciarBiblioteca from "../pages/GerenciarBiblioteca";
 import SeedBiblioteca from "../pages/Seedbiblioteca";
+import HistoricoRotinas from "../pages/HistoricoRotinas";
 
 export default function RouterApp() {
   return (
@@ -42,6 +43,7 @@ export default function RouterApp() {
           <Route path="/gestor/:empresaId/orcamentos/:orcamentoId/editar"      element={<ProtectedRoutes><NovoOrcamento /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/orcamentos/:orcamentoId"             element={<ProtectedRoutes><DetalheOrcamento /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/biblioteca"         element={<ProtectedRoutes><GerenciarBiblioteca /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/rotinas"            element={<ProtectedRoutes><HistoricoRotinas /></ProtectedRoutes>} />
 
           <Route path="/gestor/:empresaId" element={<ProtectedRoutes><HomePageGestor /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/contratos" element={<ProtectedRoutes><SelecionarContratos /></ProtectedRoutes>} />

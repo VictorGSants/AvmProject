@@ -341,7 +341,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               </InfoLinha>
             )}
 
-            {/* Fotos durante execução */}
+            {/* Fotos durante execução — técnico */}
             {eTecnico && evento.status === "em_andamento" && (
               <FotoUpload
                 empresaId={empresaId}
@@ -351,8 +351,19 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               />
             )}
 
-            {/* Fotos salvas (concluído) */}
-            {evento.status === "concluido" && fotosEvento.length > 0 && (
+            {/* Fotos — gestor/patrão pode adicionar em qualquer status (exceto cancelado) */}
+            {eGestor && evento.status !== "cancelado" && (
+              <FotoUpload
+                empresaId={empresaId}
+                agendamentoId={evento.id}
+                fotosIniciais={fotosEvento}
+                onFotosChange={atualizarFotos}
+                label="Fotos / Observações"
+              />
+            )}
+
+            {/* Fotos salvas (concluído) — exibe para técnico */}
+            {eTecnico && evento.status === "concluido" && fotosEvento.length > 0 && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
                   Fotos do serviço

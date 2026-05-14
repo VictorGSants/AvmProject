@@ -260,7 +260,7 @@ export default function PmocGestor() {
       <Modal
         aberto={!!equipamentoSelecionado}
         onClose={fecharModal}
-        titulo={etapa === "assinatura" ? "Assinatura do Responsável" : "Registrar PMOC"}
+        titulo={etapa === "assinatura" ? "Assinatura do Técnico" : "Registrar PMOC"}
       >
         <div className="max-h-[75vh] overflow-y-auto pr-1">
 

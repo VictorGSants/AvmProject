@@ -3,14 +3,14 @@ import { useState, useEffect } from "react";
 export const VEICULOS = ["Kombi", "Fiorino", "Strada", "Celta"];
 
 // EPIs sempre aparecem em qualquer veículo
-const EPIS = [
+export const EPIS = [
   { id: "luvas",    categoria: "EPIs", item: "Luvas de proteção" },
   { id: "oculos",   categoria: "EPIs", item: "Óculos de segurança" },
   { id: "calcado",  categoria: "EPIs", item: "Calçado de segurança" },
   { id: "uniforme", categoria: "EPIs", item: "Uniforme completo" },
 ];
 
-const FERRAMENTAS_POR_VEICULO = {
+export const FERRAMENTAS_POR_VEICULO = {
   Kombi: [
     // Ferramentas
     { id: "k_molas",         categoria: "Ferramentas", item: "Molas 3/8, 1/4, 1/4, 5/16" },

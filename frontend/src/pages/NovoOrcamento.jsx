@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, Plus, Trash2, FileText } from "lucide-react";
+import { Search, Plus, Trash2, FileText, Building2 } from "lucide-react";
 import Header from "../components/Header";
 import { listarClientes, criarCliente } from "../services/clienteService";
 import { listarBiblioteca } from "../services/bibliotecaService";
@@ -8,6 +8,7 @@ import {
   criarOrcamento, atualizarOrcamento, obterOrcamento, fmtBRL,
 } from "../services/orcamentoService";
 import { EMPRESAID } from "../config/empresa";
+import { listarFornecedores, criarFornecedor } from "../services/fornecedorService";
 import { toast } from "sonner";
 
 const STEPS = ["Cliente", "Serviço", "Itens", "Revisão"];
@@ -36,6 +37,8 @@ export default function NovoOrcamento() {
   const [pagamento, setPagamento]             = useState("15 DDL");
   const [validade, setValidade]               = useState("30 dias");
   const [prazoExecucao, setPrazoExecucao]     = useState("30 dias");
+  const [exibirFornecedor, setExibirFornecedor] = useState(false);
+  const [fornecedor, setFornecedor]             = useState(null);
 
   // Carrega orçamento existente ao editar
   useEffect(() => {
@@ -64,6 +67,8 @@ export default function NovoOrcamento() {
         setPagamento(orc.pagamento       || "15 DDL");
         setValidade(orc.validade         || "30 dias");
         setPrazoExecucao(orc.prazoExecucao || "30 dias");
+        setExibirFornecedor(orc.exibirDadosFornecedor ?? false);
+        setFornecedor(orc.fornecedor || null);
         setStep(2);
       })
       .catch(() => toast.error("Erro ao carregar orçamento"))
@@ -126,6 +131,8 @@ export default function NovoOrcamento() {
         precoFinalDigitado: precoFinal,
         processo, observacoes,
         garantia, pagamento, validade, prazoExecucao,
+        exibirDadosFornecedor: exibirFornecedor,
+        fornecedor: fornecedor || null,
         status: rascunho ? "rascunho" : "enviado",
       };
 
@@ -201,6 +208,7 @@ export default function NovoOrcamento() {
         )}
         {step === 3 && (
           <StepRevisao
+            eId={eId}
             cliente={cliente} servico={servico}
             itensEquip={itensEquip} itensInst={itensInst}
             opcoesEquip={opcoesEquip} opcaoIdx={opcaoIdx}
@@ -212,6 +220,8 @@ export default function NovoOrcamento() {
             onDescChange={setDescricaoObjeto} onGarantiaChange={setGarantia}
             onPagamentoChange={setPagamento} onValidadeChange={setValidade}
             onPrazoChange={setPrazoExecucao}
+            exibirFornecedor={exibirFornecedor} setExibirFornecedor={setExibirFornecedor}
+            fornecedor={fornecedor} setFornecedor={setFornecedor}
             onVoltar={() => setStep(2)}
             onRascunho={() => handleSalvar(true)}
             onFinalizar={() => handleSalvar(false)}
@@ -582,12 +592,15 @@ function Row({ label, value }) {
 }
 
 function StepRevisao({
+  eId,
   cliente, servico, itensEquip, itensInst,
   opcoesEquip, opcaoIdx, equipApenasRef,
   precoFinal, processo, observacoes,
   descricaoObjeto, garantia, pagamento, validade, prazoExecucao,
   onPrecoChange, onProcessoChange, onObsChange,
   onDescChange, onGarantiaChange, onPagamentoChange, onValidadeChange, onPrazoChange,
+  exibirFornecedor, setExibirFornecedor,
+  fornecedor, setFornecedor,
   onVoltar, onRascunho, onFinalizar, salvando, modoEditar,
 }) {
   const vlOpcao       = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
@@ -665,6 +678,32 @@ function StepRevisao({
           placeholder="12 meses peças / 36 meses compressor" />
       </div>
 
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
+            <Building2 size={13} />
+            Fornecedor no PDF
+          </p>
+          <button
+            onClick={() => { setExibirFornecedor(!exibirFornecedor); if (exibirFornecedor) setFornecedor(null); }}
+            className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-colors ${
+              exibirFornecedor
+                ? "bg-blue-50 border-blue-200 text-blue-700"
+                : "bg-gray-50 border-gray-200 text-gray-500"
+            }`}
+          >
+            {exibirFornecedor ? "Incluído no PDF" : "Não incluir"}
+          </button>
+        </div>
+        {exibirFornecedor && (
+          <SeletorFornecedor
+            eId={eId}
+            fornecedorSelecionado={fornecedor}
+            onSelect={setFornecedor}
+          />
+        )}
+      </div>
+
       <div className="mb-5">
         <label className="text-xs font-semibold text-gray-600 block mb-1">Observações internas (opcional)</label>
         <textarea rows={2} placeholder="Observações técnicas, condições especiais..."
@@ -693,6 +732,113 @@ function StepRevisao({
         )}
         <button onClick={onVoltar} className="w-full text-sm text-gray-400 py-2">← Voltar</button>
       </div>
+    </div>
+  );
+}
+
+// ── Seletor de Fornecedor (igual ao seletor de cliente) ───────────────────
+const VAZIO_FORN = { nome: "", cnpj: "", banco: "" };
+
+function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
+  const [fornecedores, setFornecedores]   = useState([]);
+  const [busca, setBusca]                 = useState("");
+  const [loading, setLoading]             = useState(true);
+  const [mostrarNovo, setMostrarNovo]     = useState(false);
+  const [novo, setNovo]                   = useState(VAZIO_FORN);
+  const [criando, setCriando]             = useState(false);
+
+  useEffect(() => {
+    listarFornecedores(eId).then(setFornecedores).finally(() => setLoading(false));
+  }, [eId]);
+
+  const filtrados = fornecedores.filter(f =>
+    !busca ||
+    f.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+    f.cnpj?.includes(busca)
+  );
+
+  function campo(k, v) { setNovo(p => ({ ...p, [k]: v })); }
+
+  async function handleCriar() {
+    if (!novo.nome.trim()) { toast.error("Nome é obrigatório"); return; }
+    setCriando(true);
+    try {
+      const dados = { nome: novo.nome.trim() };
+      if (novo.cnpj.trim())  dados.cnpj  = novo.cnpj.trim();
+      if (novo.banco.trim()) dados.banco  = novo.banco.trim();
+      const id = await criarFornecedor(eId, dados);
+      toast.success("Fornecedor cadastrado!");
+      const criado = { id, ...dados };
+      setFornecedores(prev => [...prev, criado]);
+      onSelect(criado);
+      setMostrarNovo(false);
+      setNovo(VAZIO_FORN);
+    } catch { toast.error("Erro ao cadastrar fornecedor"); }
+    finally { setCriando(false); }
+  }
+
+  if (fornecedorSelecionado) {
+    return (
+      <div className="flex items-start justify-between bg-blue-50 border border-blue-200 rounded-xl p-3">
+        <div>
+          <p className="text-sm font-semibold text-gray-800">{fornecedorSelecionado.nome}</p>
+          {fornecedorSelecionado.cnpj  && <p className="text-xs text-gray-500 mt-0.5">CNPJ {fornecedorSelecionado.cnpj}</p>}
+          {fornecedorSelecionado.banco && <p className="text-xs text-gray-500">{fornecedorSelecionado.banco}</p>}
+        </div>
+        <button onClick={() => onSelect(null)}
+          className="text-xs text-[#1a5ea8] font-semibold ml-3 flex-shrink-0">
+          Trocar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="relative mb-3">
+        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input type="text" placeholder="Buscar fornecedor por nome ou CNPJ..."
+          value={busca} onChange={e => setBusca(e.target.value)}
+          className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
+      </div>
+
+      {loading ? <p className="text-sm text-gray-400 text-center py-4">Carregando...</p> : (
+        <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
+          {filtrados.map(f => (
+            <div key={f.id} onClick={() => onSelect(f)}
+              className="p-3 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-[#7b8cd4] transition-all">
+              <p className="text-sm font-semibold text-gray-800">{f.nome}</p>
+              <div className="flex flex-wrap gap-x-3 mt-0.5">
+                {f.cnpj  && <span className="text-xs text-gray-400">CNPJ {f.cnpj}</span>}
+                {f.banco && <span className="text-xs text-gray-400">{f.banco}</span>}
+              </div>
+            </div>
+          ))}
+          {filtrados.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-3">Nenhum fornecedor encontrado</p>
+          )}
+        </div>
+      )}
+
+      <button onClick={() => setMostrarNovo(!mostrarNovo)}
+        className="flex items-center gap-2 text-sm text-[#1a5ea8] font-semibold mb-3">
+        <Plus size={15} /> {mostrarNovo ? "Cancelar" : "Cadastrar novo fornecedor"}
+      </button>
+
+      {mostrarNovo && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+          <ClienteField label="Nome" obrigatorio type="text" placeholder="Nome do fornecedor"
+            value={novo.nome} onChange={e => campo("nome", e.target.value)} />
+          <ClienteField label="CNPJ" type="text" placeholder="00.000.000/0001-00"
+            value={novo.cnpj} onChange={e => campo("cnpj", e.target.value)} />
+          <ClienteField label="Dados Bancários" type="text" placeholder="Ex: Itaú · Ag. 0000 · CC 00000-0"
+            value={novo.banco} onChange={e => campo("banco", e.target.value)} />
+          <button onClick={handleCriar} disabled={!novo.nome.trim() || criando}
+            className="w-full bg-[#1a5ea8] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
+            {criando ? "Salvando..." : "Salvar e selecionar"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,34 +1,49 @@
 import { useState, useRef } from "react";
-import { Camera, X, Loader2, ImagePlus } from "lucide-react";
+import { Camera, ImagePlus, X, Loader2 } from "lucide-react";
 import { uploadFoto } from "../../services/storage/uploadFotos";
+import { toast } from "sonner";
 
-// Permite tirar/selecionar fotos e faz upload para o Firebase Storage.
-// `capture="environment"` abre a câmera traseira diretamente no mobile.
-export default function FotoUpload({ empresaId, agendamentoId, fotosIniciais = [], onFotosChange }) {
-  const [fotos, setFotos] = useState(fotosIniciais);
+export default function FotoUpload({
+  empresaId,
+  agendamentoId,
+  fotosIniciais = [],
+  onFotosChange,
+  label = "Fotos do serviço",
+}) {
+  const [fotos, setFotos]       = useState(fotosIniciais);
   const [enviando, setEnviando] = useState(false);
-  const inputRef = useRef(null);
+  const [progresso, setProgresso] = useState({ atual: 0, total: 0 });
+  const inputCameraRef = useRef(null);
+  const inputGaleriaRef = useRef(null);
 
   async function handleArquivos(e) {
     const arquivos = [...e.target.files];
     if (!arquivos.length) return;
 
     setEnviando(true);
-    try {
-      // Faz upload de todos os arquivos em paralelo
-      const novasUrls = await Promise.all(
-        arquivos.map(arq => uploadFoto(empresaId, agendamentoId, arq))
-      );
+    setProgresso({ atual: 0, total: arquivos.length });
+
+    const novasUrls = [];
+    for (const arq of arquivos) {
+      try {
+        const url = await uploadFoto(empresaId, agendamentoId, arq);
+        novasUrls.push(url);
+        setProgresso(p => ({ ...p, atual: p.atual + 1 }));
+      } catch (err) {
+        console.error("Erro no upload:", err);
+        toast.error(`Erro ao enviar "${arq.name}": ${err.message}`);
+      }
+    }
+
+    if (novasUrls.length > 0) {
       const todasFotos = [...fotos, ...novasUrls];
       setFotos(todasFotos);
       onFotosChange(todasFotos);
-    } catch {
-      alert("Erro ao enviar foto. Verifique a conexão e tente novamente.");
-    } finally {
-      setEnviando(false);
-      // Limpa o input para permitir selecionar a mesma foto novamente
-      e.target.value = "";
     }
+
+    setEnviando(false);
+    setProgresso({ atual: 0, total: 0 });
+    e.target.value = "";
   }
 
   function removerFoto(idx) {
@@ -40,11 +55,11 @@ export default function FotoUpload({ empresaId, agendamentoId, fotosIniciais = [
   return (
     <div>
       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-        Fotos do serviço
+        {label}
       </p>
 
       <div className="flex flex-wrap gap-2">
-        {/* Thumbnails das fotos já enviadas */}
+        {/* Thumbnails */}
         {fotos.map((url, idx) => (
           <div key={idx} className="relative w-20 h-20 flex-shrink-0">
             <img
@@ -61,28 +76,49 @@ export default function FotoUpload({ empresaId, agendamentoId, fotosIniciais = [
           </div>
         ))}
 
-        {/* Botão de adicionar foto */}
+        {/* Botão câmera */}
         <button
-          onClick={() => inputRef.current?.click()}
+          onClick={() => inputCameraRef.current?.click()}
           disabled={enviando}
-          className="w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-[#7b8cd4] hover:text-[#7b8cd4] transition-colors flex-shrink-0 active:scale-95"
+          title="Tirar foto"
+          className="w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-[#7b8cd4] hover:text-[#7b8cd4] transition-colors flex-shrink-0 active:scale-95 disabled:opacity-50"
         >
           {enviando
             ? <Loader2 size={20} className="animate-spin" />
-            : <Camera size={20} />
-          }
+            : <Camera size={20} />}
           <span className="text-[10px] mt-1 font-medium">
-            {enviando ? "Enviando..." : "Foto"}
+            {enviando ? `${progresso.atual}/${progresso.total}` : "Câmera"}
           </span>
         </button>
+
+        {/* Botão galeria */}
+        {!enviando && (
+          <button
+            onClick={() => inputGaleriaRef.current?.click()}
+            title="Selecionar da galeria"
+            className="w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-gray-400 hover:border-[#7b8cd4] hover:text-[#7b8cd4] transition-colors flex-shrink-0 active:scale-95"
+          >
+            <ImagePlus size={20} />
+            <span className="text-[10px] mt-1 font-medium">Galeria</span>
+          </button>
+        )}
       </div>
 
-      {/* Input oculto — capture="environment" abre câmera traseira no mobile */}
+      {/* Input câmera — abre diretamente a câmera */}
       <input
-        ref={inputRef}
+        ref={inputCameraRef}
         type="file"
         accept="image/*"
         capture="environment"
+        onChange={handleArquivos}
+        className="hidden"
+      />
+
+      {/* Input galeria — abre seletor de arquivos */}
+      <input
+        ref={inputGaleriaRef}
+        type="file"
+        accept="image/*"
         multiple
         onChange={handleArquivos}
         className="hidden"
