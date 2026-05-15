@@ -46,9 +46,9 @@ export default function DetalheOrcamento() {
     }
   }
 
-  function handlePdf() {
+  async function handlePdf() {
     if (!orc) return;
-    gerarPdfOrcamento(orc);
+    await gerarPdfOrcamento(orc);
   }
 
   if (loading) return (

@@ -1,15 +1,24 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import logoUrl from "../images/Icon.png";
 
-// Cor principal AVM (igual ao pmocPdf.js)
-const BRAND   = [26, 94, 168];   // #1a5ea8
-const GREEN   = [26, 122, 58];   // #1a7a3a
-const LIGHT   = [244, 247, 251]; // fundo linhas alternadas
+const BRAND   = [26, 94, 168];
+const GREEN   = [26, 122, 58];
+const LIGHT   = [244, 247, 251];
 const MID     = [85, 85, 85];
 const DARK    = [26, 26, 26];
 
 function fmt(v) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v ?? 0);
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload  = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 }
 
 function drawPageFooter(doc) {
@@ -29,21 +38,13 @@ function drawPageFooter(doc) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Função principal
+// Função principal (assíncrona para carregar a logo)
 // ─────────────────────────────────────────────────────────────────────────────
-// orcamento = {
-//   numero, criadoEm, processo,
-//   clienteNome, clienteCnpj, clienteEndereco,
-//   servicoNome, descricaoObjeto,
-//   itensEquipamentos: [{ desc, qtd, vlUnit }],
-//   itensInstalacao:   [{ desc, qtd, vlUnit }],
-//   calculo: { totalEquipamentos, totalInstalacao, totalGeral },
-//   garantia, pagamento, validade, prazoExecucao,
-//   observacoes,
-//   exibirDadosFornecedor: bool,
-//   fornecedorNome, fornecedorCnpj, fornecedorBanco,
-// }
-export function gerarPdfOrcamento(orcamento) {
+export async function gerarPdfOrcamento(orcamento) {
+  // Carrega a logo antes de gerar o PDF
+  let logoImg = null;
+  try { logoImg = await loadImage(logoUrl); } catch { /* segue sem logo */ }
+
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
   const {
@@ -55,6 +56,9 @@ export function gerarPdfOrcamento(orcamento) {
     descricaoObjeto = "",
     itensEquipamentos = [],
     itensInstalacao   = [],
+    opcoesEquipamento = [],
+    opcaoEquipamentoSelecionada = null,
+    equipApenasRef    = false,
     calculo = {},
     garantia         = "12 meses peças / 36 meses compressor",
     pagamento        = "15 DDL",
@@ -64,6 +68,9 @@ export function gerarPdfOrcamento(orcamento) {
     exibirDadosFornecedor = false,
     fornecedor       = null,
     servicoCategoria = "",
+    direcionadoA     = "",
+    aoCuidadoDe      = "",
+    responsavel      = "",
   } = orcamento;
 
   const fornecedorNome  = fornecedor?.nome  || "";
@@ -78,35 +85,43 @@ export function gerarPdfOrcamento(orcamento) {
 
   // ── Cabeçalho ─────────────────────────────────────────────────────────────
   doc.setFillColor(...BRAND);
-  doc.rect(0, 0, 210, 28, "F");
+  doc.rect(0, 0, 210, 30, "F");
+
+  // Logo (se carregou)
+  if (logoImg) {
+    doc.addImage(logoImg, "PNG", 14, 6, 18, 18);
+  }
+
+  // Texto do cabeçalho (deslocado à direita quando há logo)
+  const txtX = logoImg ? 36 : 14;
 
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("AVM AR CAMPINAS", 14, 10);
+  doc.setFontSize(13);
+  doc.text("AVM AR CAMPINAS", txtX, 12);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.text("AR CONDICIONADO E ELÉTRICA", 14, 16);
+  doc.setFontSize(8);
+  doc.text("AR CONDICIONADO E ELÉTRICA", txtX, 17.5);
   doc.text(
     "André Gonçalves Santos · CNPJ 29.969.275/0001-10 · CFT 313.142.228-99",
-    14, 21
+    txtX, 22
   );
-  doc.text("Rua Uruguai, 38 – NV Europa – Campinas/SP  ·  (19) 4141-7244", 14, 26);
+  doc.text("Rua Uruguai, 38 – NV Europa – Campinas/SP  ·  (19) 4141-7244", txtX, 26.5);
 
   // Número da proposta (canto direito)
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
-  doc.text("PROPOSTA", 196, 10, { align: "right" });
-  doc.setFontSize(18);
-  doc.text(numero, 196, 19, { align: "right" });
+  doc.text("PROPOSTA", 196, 12, { align: "right" });
+  doc.setFontSize(17);
+  doc.text(numero, 196, 20.5, { align: "right" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
-  doc.text(dataEmissao, 196, 26, { align: "right" });
+  doc.text(dataEmissao, 196, 27, { align: "right" });
 
-  // ── Faixa de informações (autoTable garante quebra automática de texto) ────
+  // ── Faixa de informações principais ────────────────────────────────────────
   autoTable(doc, {
-    startY: 32,
+    startY: 34,
     margin: { left: 14, right: 14 },
     head: [["PROCESSO", "ATENDIDO", "CNPJ CONTRATANTE", "GARANTIA"]],
     body: [[processo || "—", clienteNome, clienteCnpj || "—", garantia]],
@@ -131,6 +146,36 @@ export function gerarPdfOrcamento(orcamento) {
     tableLineWidth: 0,
   });
 
+  // ── Faixa de destinatário (apenas quando preenchido) ──────────────────────
+  if (direcionadoA || aoCuidadoDe || responsavel) {
+    const destY = doc.lastAutoTable.finalY;
+
+    autoTable(doc, {
+      startY: destY,
+      margin: { left: 14, right: 14 },
+      head: [["DIRECIONADO A", "AOS CUIDADOS DE", "RESPONSÁVEL"]],
+      body: [[direcionadoA || "—", aoCuidadoDe || "—", responsavel || "—"]],
+      headStyles: {
+        fillColor: BRAND, textColor: [255, 255, 255],
+        fontStyle: "bold", fontSize: 7,
+        cellPadding: { top: 2, right: 3, bottom: 1, left: 3 },
+        lineWidth: 0,
+      },
+      bodyStyles: {
+        fillColor: [220, 232, 248], textColor: DARK,
+        fontStyle: "bold", fontSize: 8.5,
+        cellPadding: { top: 1, right: 3, bottom: 4, left: 3 },
+        lineWidth: 0,
+      },
+      columnStyles: {
+        0: { cellWidth: 60 },
+        1: { cellWidth: 60 },
+        2: { cellWidth: "auto" },
+      },
+      tableLineWidth: 0,
+    });
+  }
+
   // ── Objeto da Proposta ─────────────────────────────────────────────────────
   let curY = doc.lastAutoTable.finalY + 6;
 
@@ -154,6 +199,33 @@ export function gerarPdfOrcamento(orcamento) {
     curY += linhas.length * 4.5 + 4;
   }
 
+  // ── Opção de equipamento selecionada (quando existir) ─────────────────────
+  if (opcoesEquipamento.length > 0 && opcaoEquipamentoSelecionada) {
+    const rotulo = equipApenasRef ? "EQUIPAMENTO SELECIONADO (referência)" : "EQUIPAMENTO SELECIONADO";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...BRAND);
+    doc.text(rotulo, 14, curY);
+    curY += 2;
+
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: 14, right: 14 },
+      head: [["MODELO / DESCRIÇÃO", "VALOR"]],
+      body: [[
+        opcaoEquipamentoSelecionada.nome || "—",
+        equipApenasRef ? "Ref." : fmt(opcaoEquipamentoSelecionada.valorUnit || 0),
+      ]],
+      styles: { fontSize: 8, cellPadding: 2.5, textColor: DARK },
+      headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: "auto" },
+        1: { cellWidth: 32, halign: "right" },
+      },
+    });
+    curY = doc.lastAutoTable.finalY + 6;
+  }
+
   // ── Tabela Equipamentos ────────────────────────────────────────────────────
   if (itensEquipamentos.length > 0) {
     doc.setFont("helvetica", "bold");
@@ -171,11 +243,11 @@ export function gerarPdfOrcamento(orcamento) {
           String(i + 1),
           item.descricao || item.desc || "—",
           String(item.qtd ?? 1),
-          fmt(item.vlUnit),
-          fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
+          equipApenasRef ? "Ref." : fmt(item.vlUnit),
+          equipApenasRef ? "Ref." : fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
         ]),
-        ["", "Subtotal equipamentos", "", "",
-         fmt(calculo.totalEquipamentos ?? 0)],
+        ["", equipApenasRef ? "Itens listados para referência" : "Subtotal equipamentos",
+         "", "", equipApenasRef ? "—" : fmt(calculo.totalEquipamentos ?? 0)],
       ],
       styles: { fontSize: 7.5, cellPadding: 2.5, textColor: DARK },
       headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 8 },
@@ -188,7 +260,6 @@ export function gerarPdfOrcamento(orcamento) {
         4: { cellWidth: 28, halign: "right" },
       },
       didParseCell(data) {
-        // Linha de subtotal: fundo azul claro + bold
         const isLast = data.row.index === itensEquipamentos.length;
         if (isLast) {
           data.cell.styles.fillColor = [232, 240, 248];
@@ -200,7 +271,7 @@ export function gerarPdfOrcamento(orcamento) {
     curY = doc.lastAutoTable.finalY + 6;
   }
 
-  // ── Tabela Instalação ──────────────────────────────────────────────────────
+  // ── Tabela Instalação (não aparece em orçamentos só de fornecimento) ───────
   if (itensInstalacao.length > 0) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
@@ -220,8 +291,7 @@ export function gerarPdfOrcamento(orcamento) {
           fmt(item.vlUnit),
           fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
         ]),
-        ["", "Subtotal mão de obra", "", "",
-         fmt(calculo.totalInstalacao ?? 0)],
+        ["", "Subtotal mão de obra", "", "", fmt(calculo.totalInstalacao ?? 0)],
       ],
       styles: { fontSize: 7.5, cellPadding: 2.5, textColor: DARK },
       headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 8 },
@@ -258,11 +328,10 @@ export function gerarPdfOrcamento(orcamento) {
   doc.line(14, curY, 196, curY);
   curY += 5;
 
-  // Linhas de subtotal
   const resumoLinhas = [];
-  if (calculo.totalEquipamentos > 0)
+  if ((calculo.totalEquipamentos ?? 0) > 0)
     resumoLinhas.push(["Subtotal equipamentos", calculo.totalEquipamentos]);
-  if (calculo.totalInstalacao > 0)
+  if ((calculo.totalInstalacao ?? 0) > 0)
     resumoLinhas.push(["Subtotal instalação / mão de obra", calculo.totalInstalacao]);
 
   for (const [label, valor] of resumoLinhas) {
@@ -278,7 +347,6 @@ export function gerarPdfOrcamento(orcamento) {
     curY += 11;
   }
 
-  // Banda verde TOTAL GERAL
   curY += 2;
   doc.setFillColor(...GREEN);
   doc.rect(14, curY, 182, 15, "F");
@@ -294,13 +362,11 @@ export function gerarPdfOrcamento(orcamento) {
   doc.addPage();
   curY = 20;
 
-  // Usa a categoria salva diretamente (mais confiável).
-  // Fallback para regex no nome do serviço em orçamentos antigos sem o campo.
-  const ehManutencao = servicoCategoria
+  const ehFornecimento = servicoCategoria === "fornecimento";
+  const ehManutencao   = !ehFornecimento && (servicoCategoria
     ? servicoCategoria !== "instalacao"
-    : /manut|correti|preventi|higien|pmoc/i.test(servicoNome);
+    : /manut|correti|preventi|higien|pmoc/i.test(servicoNome));
 
-  // Cabeçalho da seção com banner colorido
   doc.setFillColor(...BRAND);
   doc.rect(14, curY - 3, 182, 12, "F");
   doc.setFont("helvetica", "bold");
@@ -337,7 +403,24 @@ export function gerarPdfOrcamento(orcamento) {
      "A CONTRATADA responde por danos causados por seus colaboradores durante a execução, com direito a contraditório e ampla defesa."],
   ];
 
-  const condicoes = ehManutencao ? condicoesManutencao : condicoesInstalacao;
+  const condicoesFornecimento = [
+    ["Fornecimento",
+     "Equipamentos novos, sem uso, com Certificado INMETRO, Selo Procel A e Manual Técnico. Caixa íntegra no transporte. Substituição em até 15 dias se recusado pelo Fiscal."],
+    ["Entrega",
+     `Entrega no local indicado pelo contratante em até ${prazoExecucao} corridos após emissão da AF ou assinatura do contrato. Agendamento prévio com o responsável técnico.`],
+    ["Nota Fiscal",
+     "Emissão de NF-e no ato do faturamento, com discriminação completa dos equipamentos fornecidos."],
+    ["Garantia",
+     `${garantia}, contados da data de recebimento. Atendimento em garantia em até 10 dias corridos após abertura de chamado.`],
+    ["Responsab.",
+     "A CONTRATADA responde pela integridade dos equipamentos até a entrega formal no local designado, com direito a contraditório e ampla defesa."],
+  ];
+
+  const condicoes = ehFornecimento
+    ? condicoesFornecimento
+    : ehManutencao
+      ? condicoesManutencao
+      : condicoesInstalacao;
 
   if (observacoes) {
     condicoes.push(["Observações", observacoes]);

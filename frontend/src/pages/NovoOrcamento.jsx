@@ -40,6 +40,9 @@ export default function NovoOrcamento() {
   const [servicoCategoria, setServicoCategoria] = useState("");
   const [exibirFornecedor, setExibirFornecedor] = useState(false);
   const [fornecedor, setFornecedor]             = useState(null);
+  const [direcionadoA, setDirecionadoA]         = useState("");
+  const [aoCuidadoDe, setAoCuidadoDe]           = useState("");
+  const [responsavel, setResponsavel]           = useState("");
 
   // Carrega orçamento existente ao editar
   useEffect(() => {
@@ -71,6 +74,9 @@ export default function NovoOrcamento() {
         setServicoCategoria(orc.servicoCategoria || "");
         setExibirFornecedor(orc.exibirDadosFornecedor ?? false);
         setFornecedor(orc.fornecedor || null);
+        setDirecionadoA(orc.direcionadoA   || "");
+        setAoCuidadoDe(orc.aoCuidadoDe    || "");
+        setResponsavel(orc.responsavel     || "");
         setStep(2);
       })
       .catch(() => toast.error("Erro ao carregar orçamento"))
@@ -138,6 +144,9 @@ export default function NovoOrcamento() {
         servicoCategoria,
         exibirDadosFornecedor: exibirFornecedor,
         fornecedor: fornecedor || null,
+        direcionadoA: direcionadoA.trim() || "",
+        aoCuidadoDe:  aoCuidadoDe.trim()  || "",
+        responsavel:  responsavel.trim()   || "",
         status: rascunho ? "rascunho" : "enviado",
       };
 
@@ -208,6 +217,7 @@ export default function NovoOrcamento() {
             itensInst={itensInst}   setItensInst={setItensInst}
             opcoesEquip={opcoesEquip} opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx}
             equipApenasRef={equipApenasRef} setEquipApenasRef={setEquipApenasRef}
+            servicoCategoria={servicoCategoria}
             onAvancar={() => setStep(3)}
             onVoltar={() => setStep(1)} />
         )}
@@ -227,6 +237,9 @@ export default function NovoOrcamento() {
             onPrazoChange={setPrazoExecucao}
             exibirFornecedor={exibirFornecedor} setExibirFornecedor={setExibirFornecedor}
             fornecedor={fornecedor} setFornecedor={setFornecedor}
+            direcionadoA={direcionadoA} onDirecionadoAChange={setDirecionadoA}
+            aoCuidadoDe={aoCuidadoDe}   onAoCuidadoDeChange={setAoCuidadoDe}
+            responsavel={responsavel}   onResponsavelChange={setResponsavel}
             onVoltar={() => setStep(2)}
             onRascunho={() => handleSalvar(true)}
             onFinalizar={() => handleSalvar(false)}
@@ -532,16 +545,24 @@ function OpcoesSection({ opcoes, opcaoIdx, setOpcaoIdx, apenasRef = false }) {
 }
 
 // ── Step 3: Itens ──────────────────────────────────────────────────────────
-function StepItens({ itensEquip, setItensEquip, itensInst, setItensInst, opcoesEquip, opcaoIdx, setOpcaoIdx, equipApenasRef, setEquipApenasRef, onAvancar, onVoltar }) {
+function StepItens({ itensEquip, setItensEquip, itensInst, setItensInst, opcoesEquip, opcaoIdx, setOpcaoIdx, equipApenasRef, setEquipApenasRef, servicoCategoria, onAvancar, onVoltar }) {
+  const ehFornecimento = servicoCategoria === "fornecimento";
   const vlOpcao    = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
   const totalEquip = equipApenasRef
     ? 0
     : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
-  const totalInst  = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
+  const totalInst  = ehFornecimento ? 0 : itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
 
   return (
     <div>
       <p className="text-sm text-gray-500 mb-4">Adicione os itens do orçamento</p>
+
+      {ehFornecimento && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-4">
+          <span className="text-xs font-semibold text-blue-700">Fornecimento apenas</span>
+          <span className="text-xs text-blue-500">— instalação não inclusa neste orçamento</span>
+        </div>
+      )}
 
       <OpcoesSection opcoes={opcoesEquip} opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx} apenasRef={equipApenasRef} />
 
@@ -566,7 +587,10 @@ function StepItens({ itensEquip, setItensEquip, itensInst, setItensInst, opcoesE
           Equipamentos listados para referência — <strong>não somam no total</strong>.
         </p>
       )}
-      <ItemSection label="Instalação / Serviço" items={itensInst} setter={setItensInst} />
+
+      {!ehFornecimento && (
+        <ItemSection label="Instalação / Serviço" items={itensInst} setter={setItensInst} />
+      )}
 
       <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex justify-between items-center mb-5">
         <span className="text-sm font-semibold text-green-800">Total Estimado</span>
@@ -606,6 +630,9 @@ function StepRevisao({
   onDescChange, onGarantiaChange, onPagamentoChange, onValidadeChange, onPrazoChange,
   exibirFornecedor, setExibirFornecedor,
   fornecedor, setFornecedor,
+  direcionadoA, onDirecionadoAChange,
+  aoCuidadoDe, onAoCuidadoDeChange,
+  responsavel, onResponsavelChange,
   onVoltar, onRascunho, onFinalizar, salvando, modoEditar,
 }) {
   const vlOpcao       = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
@@ -707,6 +734,21 @@ function StepRevisao({
             onSelect={setFornecedor}
           />
         )}
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Destinatário no PDF</p>
+        <p className="text-[11px] text-gray-400 mb-3 leading-relaxed">
+          Use quando o orçamento é direcionado a uma entidade (ex: FUNCAMP) e entregue aos cuidados de outra (ex: Instituto de Biologia).
+        </p>
+        <div className="space-y-3">
+          <InputField label="Direcionado a" placeholder="Ex: FUNCAMP"
+            value={direcionadoA} onChange={onDirecionadoAChange} />
+          <InputField label="Aos cuidados de" placeholder="Ex: Instituto de Biologia"
+            value={aoCuidadoDe} onChange={onAoCuidadoDeChange} />
+          <InputField label="Responsável" placeholder="Nome do responsável específico"
+            value={responsavel} onChange={onResponsavelChange} />
+        </div>
       </div>
 
       <div className="mb-5">
