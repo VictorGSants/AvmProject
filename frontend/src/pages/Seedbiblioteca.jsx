@@ -209,12 +209,7 @@ const SERVICOS_FORNECIMENTO = [
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 9.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
     garantia: "12 meses peças / 36 meses compressor",
-    materiais: [],
-    opcoesEquipamento: [
-      { nome: "Midea Split Hi-Wall 9.000 BTU/h 220V – Inverter", valorUnit: 1850 },
-      { nome: "Elgin Split Hi-Wall 9.000 BTU/h 220V – Inverter", valorUnit: 1780 },
-      { nome: "Gree Split Hi-Wall 9.000 BTU/h 220V – Inverter", valorUnit: 1920 },
-    ],
+    materiais: [], opcoesEquipamento: [],
   },
   {
     nome: "Fornecimento Split Hi-Wall 12.000 BTU/h",
@@ -222,12 +217,7 @@ const SERVICOS_FORNECIMENTO = [
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 12.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
     garantia: "12 meses peças / 36 meses compressor",
-    materiais: [],
-    opcoesEquipamento: [
-      { nome: "Midea Split Hi-Wall 12.000 BTU/h 220V – Inverter", valorUnit: 2100 },
-      { nome: "Elgin Split Hi-Wall 12.000 BTU/h 220V – Inverter", valorUnit: 2050 },
-      { nome: "Gree Split Hi-Wall 12.000 BTU/h 220V – Inverter", valorUnit: 2200 },
-    ],
+    materiais: [], opcoesEquipamento: [],
   },
   {
     nome: "Fornecimento Split Hi-Wall 18.000 BTU/h",
@@ -235,12 +225,7 @@ const SERVICOS_FORNECIMENTO = [
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 18.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
     garantia: "12 meses peças / 36 meses compressor",
-    materiais: [],
-    opcoesEquipamento: [
-      { nome: "Midea Split Hi-Wall 18.000 BTU/h 220V – Inverter", valorUnit: 2750 },
-      { nome: "Elgin Split Hi-Wall 18.000 BTU/h 220V – Inverter", valorUnit: 2680 },
-      { nome: "Gree Split Hi-Wall 18.000 BTU/h 220V – Inverter", valorUnit: 2850 },
-    ],
+    materiais: [], opcoesEquipamento: [],
   },
   {
     nome: "Fornecimento Split Hi-Wall 24.000 BTU/h",
@@ -248,12 +233,7 @@ const SERVICOS_FORNECIMENTO = [
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 24.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
     garantia: "12 meses peças / 36 meses compressor",
-    materiais: [],
-    opcoesEquipamento: [
-      { nome: "Midea Split Hi-Wall 24.000 BTU/h 220V – Inverter", valorUnit: 3450 },
-      { nome: "Elgin Split Hi-Wall 24.000 BTU/h 220V – Inverter", valorUnit: 3380 },
-      { nome: "Gree Split Hi-Wall 24.000 BTU/h 220V – Inverter", valorUnit: 3580 },
-    ],
+    materiais: [], opcoesEquipamento: [],
   },
   {
     nome: "Fornecimento Split Piso-Teto 36.000 BTU/h",
@@ -261,12 +241,7 @@ const SERVICOS_FORNECIMENTO = [
     descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 36.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
     garantia: "12 meses peças / 36 meses compressor",
-    materiais: [],
-    opcoesEquipamento: [
-      { nome: "Midea Split Piso-Teto 36.000 BTU/h 220V – Inverter", valorUnit: 5500 },
-      { nome: "Elgin Split Piso-Teto 36.000 BTU/h 220V – Inverter", valorUnit: 5350 },
-      { nome: "Gree Split Piso-Teto 36.000 BTU/h 220V – Inverter", valorUnit: 5700 },
-    ],
+    materiais: [], opcoesEquipamento: [],
   },
   {
     nome: "Fornecimento Split Piso-Teto 48.000 BTU/h",
@@ -274,12 +249,7 @@ const SERVICOS_FORNECIMENTO = [
     descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 48.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
     garantia: "12 meses peças / 36 meses compressor",
-    materiais: [],
-    opcoesEquipamento: [
-      { nome: "Midea Split Piso-Teto 48.000 BTU/h 220V – Inverter", valorUnit: 7000 },
-      { nome: "Elgin Split Piso-Teto 48.000 BTU/h 220V – Inverter", valorUnit: 6800 },
-      { nome: "Gree Split Piso-Teto 48.000 BTU/h 220V – Inverter", valorUnit: 7200 },
-    ],
+    materiais: [], opcoesEquipamento: [],
   },
   {
     nome: "Fornecimento Split Piso-Teto 60.000 BTU/h",
@@ -287,12 +257,7 @@ const SERVICOS_FORNECIMENTO = [
     descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 60.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
     garantia: "12 meses peças / 36 meses compressor",
-    materiais: [],
-    opcoesEquipamento: [
-      { nome: "Midea Split Piso-Teto 60.000 BTU/h 220V – Inverter", valorUnit: 8825 },
-      { nome: "Elgin Split Piso-Teto 60.000 BTU/h 220V – Inverter", valorUnit: 8600 },
-      { nome: "Gree Split Piso-Teto 60.000 BTU/h 220V – Inverter", valorUnit: 9100 },
-    ],
+    materiais: [], opcoesEquipamento: [],
   },
 ];
 

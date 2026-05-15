@@ -37,3 +37,9 @@ export const catalogoRef = (empresaId) =>
 
 export const catalogoDoc = (empresaId, itemId) =>
   doc(db, `empresas/${empresaId}/catalogo/${itemId}`);
+
+export const entidadesRef = (empresaId) =>
+  collection(db, `empresas/${empresaId}/entidades`);
+
+export const entidadeDoc = (empresaId, entidadeId) =>
+  doc(db, `empresas/${empresaId}/entidades/${entidadeId}`);

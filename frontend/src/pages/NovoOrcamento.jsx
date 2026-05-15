@@ -10,6 +10,7 @@ import {
 import { EMPRESAID } from "../config/empresa";
 import { listarFornecedores, criarFornecedor } from "../services/fornecedorService";
 import { listarCatalogo } from "../services/catalogoService";
+import { listarEntidades, criarEntidade, atualizarEntidade } from "../services/entidadeService";
 import { toast } from "sonner";
 
 const STEPS = ["Cliente", "Serviço", "Itens", "Revisão"];
@@ -577,21 +578,21 @@ function StepItens({ eId, itensEquip, setItensEquip, itensInst, setItensInst, op
         />
       )}
 
-      <p className="text-sm text-gray-500 mb-4">Adicione os itens do orçamento</p>
+      <div className="flex items-center justify-between mb-4">
+        <p className="text-sm text-gray-500">Adicione os itens do orçamento</p>
+        <button
+          onClick={() => setModalCatalogo(true)}
+          className="flex items-center gap-1.5 text-xs font-semibold text-[#1a5ea8] bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm active:scale-95 transition-all"
+        >
+          <PackageSearch size={13} />
+          Catálogo Uniar
+        </button>
+      </div>
 
       {ehFornecimento && (
-        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-blue-700">Fornecimento apenas</span>
-            <span className="text-xs text-blue-500">— instalação não inclusa</span>
-          </div>
-          <button
-            onClick={() => setModalCatalogo(true)}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#1a5ea8] bg-white border border-blue-200 rounded-lg px-2.5 py-1 active:scale-95 transition-all"
-          >
-            <PackageSearch size={13} />
-            Catálogo Uniar
-          </button>
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-4">
+          <span className="text-xs font-semibold text-blue-700">Fornecimento apenas</span>
+          <span className="text-xs text-blue-500">— instalação não inclusa neste orçamento</span>
         </div>
       )}
 
@@ -642,13 +643,14 @@ function StepItens({ eId, itensEquip, setItensEquip, itensInst, setItensInst, op
 
 // ── Modal Busca Catálogo ───────────────────────────────────────────────────
 function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
-  const [produtos, setProdutos]             = useState([]);
-  const [loading, setLoading]               = useState(true);
-  const [busca, setBusca]                   = useState("");
-  const [filtroTipo, setFiltroTipo]         = useState("");   // "" | "FR" | "CR"
-  const [filtroCategoria, setFiltroCategoria] = useState(""); // "" | "hiwall" | "pisoteto" | "cortina"
-  const [margem, setMargem]                 = useState("30");
-  const [selecionado, setSelecionado]       = useState(null);
+  const [produtos, setProdutos]               = useState([]);
+  const [loading, setLoading]                 = useState(true);
+  const [busca, setBusca]                     = useState("");
+  const [filtroTipo, setFiltroTipo]           = useState("");
+  const [filtroCategoria, setFiltroCategoria] = useState("");
+  const [margem, setMargem]                   = useState("30");
+  const [selecionado, setSelecionado]         = useState(null);
+  const [precoVenda, setPrecoVenda]           = useState("");
 
   useEffect(() => {
     listarCatalogo(eId).then(setProdutos).finally(() => setLoading(false));
@@ -675,14 +677,28 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
   }
 
   function calcPreco(p) {
-    return p.custoUniar * (1 + margemNum / 100);
+    return Math.round(p.custoUniar * (1 + margemNum / 100) * 100) / 100;
+  }
+
+  function handleSelectProduto(p) {
+    const jaAtivo = selecionado?.id === p.id;
+    setSelecionado(jaAtivo ? null : p);
+    setPrecoVenda(jaAtivo ? "" : String(calcPreco(p)));
+  }
+
+  function handleMargemChange(val) {
+    setMargem(val);
+    const m = parseFloat(val) || 0;
+    if (selecionado) {
+      setPrecoVenda(String(Math.round(selecionado.custoUniar * (1 + m / 100) * 100) / 100));
+    }
   }
 
   function handleAdicionar() {
     if (!selecionado) return;
     onAdicionar({
       nome: nomeOpcao(selecionado),
-      valorUnit: Math.round(calcPreco(selecionado) * 100) / 100,
+      valorUnit: parseFloat(precoVenda) || calcPreco(selecionado),
       custoUniar: selecionado.custoUniar,
       margem: margemNum,
     });
@@ -721,12 +737,12 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
           <input
             type="number" min={0} max={200} step={0.5}
             value={margem}
-            onChange={(e) => setMargem(e.target.value)}
+            onChange={(e) => handleMargemChange(e.target.value)}
             className="w-20 px-2 py-1.5 text-sm font-bold border border-[#1a5ea8] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] text-center"
           />
           {selecionado && (
-            <span className="text-xs text-gray-500 flex-1">
-              Custo {fmtBRL(selecionado.custoUniar)} → <strong className="text-green-700">{fmtBRL(calcPreco(selecionado))}</strong>
+            <span className="text-xs text-gray-400 flex-1">
+              custo {fmtBRL(selecionado.custoUniar)}
             </span>
           )}
         </div>
@@ -770,7 +786,7 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
               return (
                 <div
                   key={p.id}
-                  onClick={() => setSelecionado(ativo ? null : p)}
+                  onClick={() => handleSelectProduto(p)}
                   className={`bg-white border rounded-xl p-3 cursor-pointer transition-all ${
                     ativo ? "border-[#1a5ea8] bg-blue-50" : "border-gray-100 hover:border-[#7b8cd4]"
                   }`}
@@ -813,9 +829,16 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
       <div className="bg-white border-t border-gray-100 p-4">
         {selecionado ? (
           <div className="space-y-2">
-            <p className="text-xs text-gray-500 text-center truncate">
-              {nomeOpcao(selecionado)} — <strong>{fmtBRL(calcPreco(selecionado))}</strong>
-            </p>
+            <p className="text-xs text-gray-500 truncate font-medium">{nomeOpcao(selecionado)}</p>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-500 whitespace-nowrap">Preço de venda (R$)</label>
+              <input
+                type="number" min={0} step={0.01}
+                value={precoVenda}
+                onChange={(e) => setPrecoVenda(e.target.value)}
+                className="flex-1 px-2 py-1.5 text-sm font-bold border border-[#1a5ea8] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] text-center"
+              />
+            </div>
             <button
               onClick={handleAdicionar}
               className="w-full bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all"
@@ -960,17 +983,12 @@ function StepRevisao({
 
       <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Destinatário no PDF</p>
-        <p className="text-[11px] text-gray-400 mb-3 leading-relaxed">
-          Use quando o orçamento é direcionado a uma entidade (ex: FUNCAMP) e entregue aos cuidados de outra (ex: Instituto de Biologia).
-        </p>
-        <div className="space-y-3">
-          <InputField label="Direcionado a" placeholder="Ex: FUNCAMP"
-            value={direcionadoA} onChange={onDirecionadoAChange} />
-          <InputField label="Aos cuidados de" placeholder="Ex: Instituto de Biologia"
-            value={aoCuidadoDe} onChange={onAoCuidadoDeChange} />
-          <InputField label="Responsável" placeholder="Nome do responsável específico"
-            value={responsavel} onChange={onResponsavelChange} />
-        </div>
+        <SeletorDestinatario
+          eId={eId}
+          direcionadoA={direcionadoA} setDirecionadoA={onDirecionadoAChange}
+          aoCuidadoDe={aoCuidadoDe}   setAoCuidadoDe={onAoCuidadoDeChange}
+          responsavel={responsavel}   setResponsavel={onResponsavelChange}
+        />
       </div>
 
       <div className="mb-5">
@@ -1107,6 +1125,219 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
             {criando ? "Salvando..." : "Salvar e selecionar"}
           </button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ── Seletor Destinatário (Entidade → Órgão → Responsável) ────────────────
+function SeletorDestinatario({ eId, direcionadoA, setDirecionadoA, aoCuidadoDe, setAoCuidadoDe, responsavel, setResponsavel }) {
+  const [entidades, setEntidades]     = useState([]);
+  const [loading, setLoading]         = useState(true);
+  const [entidadeSel, setEntidadeSel] = useState(null);
+  const [novoEntNome, setNovoEntNome] = useState("");
+  const [novoOrgNome, setNovoOrgNome] = useState("");
+  const [novoRespNome, setNovoRespNome] = useState("");
+  const [salvando, setSalvando]       = useState(false);
+  const [modoNovoEnt, setModoNovoEnt] = useState(false);
+  const [modoNovoOrg, setModoNovoOrg] = useState(false);
+  const [modoNovoResp, setModoNovoResp] = useState(false);
+
+  useEffect(() => {
+    listarEntidades(eId).then((lista) => {
+      setEntidades(lista);
+      if (direcionadoA) {
+        const found = lista.find((e) => e.nome === direcionadoA);
+        if (found) setEntidadeSel(found);
+      }
+    }).finally(() => setLoading(false));
+  }, [eId]);
+
+  const orgaos = entidadeSel?.orgaos || [];
+  const orgaoObj = orgaos.find((o) => o.nome === aoCuidadoDe);
+  const responsaveis = orgaoObj?.responsaveis || [];
+
+  function selecionarEntidade(e) {
+    setEntidadeSel(e);
+    setDirecionadoA(e.nome);
+    setAoCuidadoDe("");
+    setResponsavel("");
+    setModoNovoOrg(false);
+    setModoNovoResp(false);
+  }
+
+  function selecionarOrgao(nome) {
+    setAoCuidadoDe(nome);
+    setResponsavel("");
+    setModoNovoResp(false);
+  }
+
+  async function handleNovaEntidade() {
+    if (!novoEntNome.trim()) return;
+    setSalvando(true);
+    try {
+      const id = await criarEntidade(eId, { nome: novoEntNome.trim(), orgaos: [] });
+      const nova = { id, nome: novoEntNome.trim(), orgaos: [] };
+      setEntidades((prev) => [...prev, nova]);
+      selecionarEntidade(nova);
+      setModoNovoEnt(false);
+      setNovoEntNome("");
+    } catch { toast.error("Erro ao criar entidade"); }
+    finally { setSalvando(false); }
+  }
+
+  async function handleNovoOrgao() {
+    if (!novoOrgNome.trim() || !entidadeSel) return;
+    const novo = { nome: novoOrgNome.trim(), responsaveis: [] };
+    const orgaosNovos = [...(entidadeSel.orgaos || []), novo];
+    try {
+      await atualizarEntidade(eId, entidadeSel.id, { orgaos: orgaosNovos });
+      const updated = { ...entidadeSel, orgaos: orgaosNovos };
+      setEntidadeSel(updated);
+      setEntidades((prev) => prev.map((e) => e.id === updated.id ? updated : e));
+      selecionarOrgao(novo.nome);
+      setModoNovoOrg(false);
+      setNovoOrgNome("");
+    } catch { toast.error("Erro ao adicionar órgão"); }
+  }
+
+  async function handleNovoResponsavel() {
+    if (!novoRespNome.trim() || !entidadeSel || !aoCuidadoDe) return;
+    const orgaosNovos = (entidadeSel.orgaos || []).map((o) =>
+      o.nome === aoCuidadoDe
+        ? { ...o, responsaveis: [...(o.responsaveis || []), novoRespNome.trim()] }
+        : o
+    );
+    try {
+      await atualizarEntidade(eId, entidadeSel.id, { orgaos: orgaosNovos });
+      const updated = { ...entidadeSel, orgaos: orgaosNovos };
+      setEntidadeSel(updated);
+      setEntidades((prev) => prev.map((e) => e.id === updated.id ? updated : e));
+      setResponsavel(novoRespNome.trim());
+      setModoNovoResp(false);
+      setNovoRespNome("");
+    } catch { toast.error("Erro ao adicionar responsável"); }
+  }
+
+  function limpar() {
+    setEntidadeSel(null);
+    setDirecionadoA("");
+    setAoCuidadoDe("");
+    setResponsavel("");
+  }
+
+  const ChipAdd = ({ label, onClick }) => (
+    <button onClick={onClick}
+      className="text-xs px-2.5 py-1 rounded-xl border border-dashed border-gray-300 text-gray-400 flex items-center gap-1 hover:border-gray-400 transition-colors">
+      <Plus size={10} /> {label}
+    </button>
+  );
+
+  const InlineForm = ({ placeholder, value, onChange, onSave, onCancel, saving }) => (
+    <div className="flex gap-1.5 mt-2 w-full">
+      <input autoFocus type="text" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter") onSave(); if (e.key === "Escape") onCancel(); }}
+        className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+      <button onClick={onSave} disabled={!value.trim() || saving}
+        className="text-xs px-2.5 py-1.5 bg-[#1a5ea8] text-white rounded-lg disabled:opacity-40">
+        {saving ? "..." : "OK"}
+      </button>
+      <button onClick={onCancel}
+        className="text-xs px-2 py-1.5 border border-gray-200 rounded-lg text-gray-400">
+        <X size={12} />
+      </button>
+    </div>
+  );
+
+  if (loading) return <p className="text-xs text-gray-400 py-2">Carregando entidades...</p>;
+
+  return (
+    <div className="space-y-4">
+      {/* ── Nível 1: Entidade ── */}
+      <div>
+        <label className="text-xs font-semibold text-gray-600 block mb-1.5">Direcionado a</label>
+        <div className="flex flex-wrap gap-2">
+          {entidades.map((e) => (
+            <button key={e.id} onClick={() => selecionarEntidade(e)}
+              className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-colors ${
+                entidadeSel?.id === e.id
+                  ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-[#7b8cd4]"
+              }`}>
+              {e.nome}
+            </button>
+          ))}
+          {!modoNovoEnt && <ChipAdd label="Nova entidade" onClick={() => setModoNovoEnt(true)} />}
+        </div>
+        {modoNovoEnt && (
+          <InlineForm placeholder="Ex: FUNCAMP" value={novoEntNome} onChange={setNovoEntNome}
+            onSave={handleNovaEntidade} onCancel={() => { setModoNovoEnt(false); setNovoEntNome(""); }}
+            saving={salvando} />
+        )}
+        {/* fallback texto livre se não há entidade selecionada mas tem valor */}
+        {!entidadeSel && direcionadoA && (
+          <input type="text" value={direcionadoA} onChange={(e) => setDirecionadoA(e.target.value)}
+            className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg" />
+        )}
+      </div>
+
+      {/* ── Nível 2: Órgão ── */}
+      {entidadeSel && (
+        <div>
+          <label className="text-xs font-semibold text-gray-600 block mb-1.5">Aos cuidados de</label>
+          <div className="flex flex-wrap gap-2">
+            {orgaos.map((o) => (
+              <button key={o.nome} onClick={() => selecionarOrgao(o.nome)}
+                className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-colors ${
+                  aoCuidadoDe === o.nome
+                    ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-[#7b8cd4]"
+                }`}>
+                {o.nome}
+              </button>
+            ))}
+            {!modoNovoOrg && <ChipAdd label="Novo órgão" onClick={() => setModoNovoOrg(true)} />}
+          </div>
+          {modoNovoOrg && (
+            <InlineForm placeholder="Ex: Instituto de Biologia" value={novoOrgNome} onChange={setNovoOrgNome}
+              onSave={handleNovoOrgao} onCancel={() => { setModoNovoOrg(false); setNovoOrgNome(""); }} />
+          )}
+        </div>
+      )}
+
+      {/* ── Nível 3: Responsável ── */}
+      {entidadeSel && aoCuidadoDe && (
+        <div>
+          <label className="text-xs font-semibold text-gray-600 block mb-1.5">Responsável</label>
+          <div className="flex flex-wrap gap-2">
+            {responsaveis.map((r) => (
+              <button key={r} onClick={() => setResponsavel(r)}
+                className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-colors ${
+                  responsavel === r
+                    ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-[#7b8cd4]"
+                }`}>
+                {r}
+              </button>
+            ))}
+            {!modoNovoResp && <ChipAdd label="Novo responsável" onClick={() => setModoNovoResp(true)} />}
+          </div>
+          {modoNovoResp && (
+            <InlineForm placeholder="Nome do responsável" value={novoRespNome} onChange={setNovoRespNome}
+              onSave={handleNovoResponsavel} onCancel={() => { setModoNovoResp(false); setNovoRespNome(""); }} />
+          )}
+          {/* texto livre se responsável salvo mas não está na lista */}
+          {!modoNovoResp && responsavel && !responsaveis.includes(responsavel) && (
+            <input type="text" value={responsavel} onChange={(e) => setResponsavel(e.target.value)}
+              className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg" />
+          )}
+        </div>
+      )}
+
+      {(direcionadoA || aoCuidadoDe || responsavel) && (
+        <button onClick={limpar} className="text-xs text-red-400 font-medium pt-1">
+          Limpar destinatário
+        </button>
       )}
     </div>
   );
