@@ -71,11 +71,12 @@ export default function GerenciarBiblioteca() {
   }
 
   const categorias = {
-    instalacao:  "Instalação",
-    manutencao:  "Manutenção",
-    higienizacao:"Higienização",
-    pmoc:        "PMOC",
-    outro:       "Outro",
+    instalacao:   "Instalação",
+    fornecimento: "Fornecimento",
+    manutencao:   "Manutenção",
+    higienizacao: "Higienização",
+    pmoc:         "PMOC",
+    outro:        "Outro",
   };
 
   return (

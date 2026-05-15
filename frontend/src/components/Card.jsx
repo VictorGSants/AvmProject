@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   Bell,
   Car,
+  BookOpen,
 } from "lucide-react";
 import { escutarChamadosAbertos } from "../services/contracts/chamadoService";
 
@@ -127,6 +128,7 @@ export function CardsHome() {
         <CardItem title="Chamados"    icon={Bell}          path={`/gestor/${empresaId}/chamados`} badge={chamadosAbertos} />
         <CardItem title="Orçamentos"  icon={FileText}      path={`/gestor/${empresaId}/orcamentos`} />
         <CardItem title="Checklists"  icon={Car}           path={`/gestor/${empresaId}/rotinas`} />
+        <CardItem title="Biblioteca"  icon={BookOpen}      path={`/gestor/${empresaId}/biblioteca`} />
       </main>
     </div>
   );

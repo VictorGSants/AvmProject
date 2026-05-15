@@ -23,6 +23,100 @@ import { toast } from "sonner";
 //   maoDeObra  → 1ª linha da tabela "Instalação / Serviço" (preço padrão por unid.)
 // O usuário edita livremente no Step 3 do wizard antes de salvar.
 
+const SERVICOS_FORNECIMENTO = [
+  {
+    nome: "Fornecimento Split Hi-Wall 9.000 BTU/h",
+    categoria: "fornecimento",
+    descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 9.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
+    maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
+    garantia: "12 meses peças / 36 meses compressor",
+    materiais: [],
+    opcoesEquipamento: [
+      { nome: "Midea Split Hi-Wall 9.000 BTU/h 220V – Inverter", valorUnit: 1850 },
+      { nome: "Elgin Split Hi-Wall 9.000 BTU/h 220V – Inverter", valorUnit: 1780 },
+      { nome: "Gree Split Hi-Wall 9.000 BTU/h 220V – Inverter", valorUnit: 1920 },
+    ],
+  },
+  {
+    nome: "Fornecimento Split Hi-Wall 12.000 BTU/h",
+    categoria: "fornecimento",
+    descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 12.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
+    maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
+    garantia: "12 meses peças / 36 meses compressor",
+    materiais: [],
+    opcoesEquipamento: [
+      { nome: "Midea Split Hi-Wall 12.000 BTU/h 220V – Inverter", valorUnit: 2100 },
+      { nome: "Elgin Split Hi-Wall 12.000 BTU/h 220V – Inverter", valorUnit: 2050 },
+      { nome: "Gree Split Hi-Wall 12.000 BTU/h 220V – Inverter", valorUnit: 2200 },
+    ],
+  },
+  {
+    nome: "Fornecimento Split Hi-Wall 18.000 BTU/h",
+    categoria: "fornecimento",
+    descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 18.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
+    maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
+    garantia: "12 meses peças / 36 meses compressor",
+    materiais: [],
+    opcoesEquipamento: [
+      { nome: "Midea Split Hi-Wall 18.000 BTU/h 220V – Inverter", valorUnit: 2750 },
+      { nome: "Elgin Split Hi-Wall 18.000 BTU/h 220V – Inverter", valorUnit: 2680 },
+      { nome: "Gree Split Hi-Wall 18.000 BTU/h 220V – Inverter", valorUnit: 2850 },
+    ],
+  },
+  {
+    nome: "Fornecimento Split Hi-Wall 24.000 BTU/h",
+    categoria: "fornecimento",
+    descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 24.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
+    maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
+    garantia: "12 meses peças / 36 meses compressor",
+    materiais: [],
+    opcoesEquipamento: [
+      { nome: "Midea Split Hi-Wall 24.000 BTU/h 220V – Inverter", valorUnit: 3450 },
+      { nome: "Elgin Split Hi-Wall 24.000 BTU/h 220V – Inverter", valorUnit: 3380 },
+      { nome: "Gree Split Hi-Wall 24.000 BTU/h 220V – Inverter", valorUnit: 3580 },
+    ],
+  },
+  {
+    nome: "Fornecimento Split Piso-Teto 36.000 BTU/h",
+    categoria: "fornecimento",
+    descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 36.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
+    maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
+    garantia: "12 meses peças / 36 meses compressor",
+    materiais: [],
+    opcoesEquipamento: [
+      { nome: "Midea Split Piso-Teto 36.000 BTU/h 220V – Inverter", valorUnit: 5500 },
+      { nome: "Elgin Split Piso-Teto 36.000 BTU/h 220V – Inverter", valorUnit: 5350 },
+      { nome: "Gree Split Piso-Teto 36.000 BTU/h 220V – Inverter", valorUnit: 5700 },
+    ],
+  },
+  {
+    nome: "Fornecimento Split Piso-Teto 48.000 BTU/h",
+    categoria: "fornecimento",
+    descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 48.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
+    maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
+    garantia: "12 meses peças / 36 meses compressor",
+    materiais: [],
+    opcoesEquipamento: [
+      { nome: "Midea Split Piso-Teto 48.000 BTU/h 220V – Inverter", valorUnit: 7000 },
+      { nome: "Elgin Split Piso-Teto 48.000 BTU/h 220V – Inverter", valorUnit: 6800 },
+      { nome: "Gree Split Piso-Teto 48.000 BTU/h 220V – Inverter", valorUnit: 7200 },
+    ],
+  },
+  {
+    nome: "Fornecimento Split Piso-Teto 60.000 BTU/h",
+    categoria: "fornecimento",
+    descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 60.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
+    maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
+    garantia: "12 meses peças / 36 meses compressor",
+    materiais: [],
+    opcoesEquipamento: [
+      { nome: "Midea Split Piso-Teto 60.000 BTU/h 220V – Inverter", valorUnit: 8825 },
+      { nome: "Elgin Split Piso-Teto 60.000 BTU/h 220V – Inverter", valorUnit: 8600 },
+      { nome: "Gree Split Piso-Teto 60.000 BTU/h 220V – Inverter", valorUnit: 9100 },
+    ],
+  },
+];
+
 const SERVICOS = [
   {
     nome: "Instalação Split Hi-Wall 9.000 BTU/h",
@@ -124,9 +218,12 @@ export default function SeedBiblioteca() {
   const { empresaId } = useParams();
   const eId = empresaId || EMPRESAID;
 
-  const [rodando, setRodando]   = useState(false);
-  const [log, setLog]           = useState([]);
-  const [concluido, setConcluido] = useState(false);
+  const [rodando, setRodando]           = useState(false);
+  const [log, setLog]                   = useState([]);
+  const [concluido, setConcluido]       = useState(false);
+  const [rodandoForn, setRodandoForn]   = useState(false);
+  const [logForn, setLogForn]           = useState([]);
+  const [concluidoForn, setConcluidoForn] = useState(false);
 
   async function handleSeed() {
     setRodando(true);
@@ -146,6 +243,24 @@ export default function SeedBiblioteca() {
     setConcluido(true);
     setRodando(false);
     toast.success(`${ok}/${SERVICOS.length} serviços criados na biblioteca!`);
+  }
+
+  async function handleSeedFornecimento() {
+    setRodandoForn(true);
+    setLogForn([]);
+    let ok = 0;
+    for (const s of SERVICOS_FORNECIMENTO) {
+      try {
+        await addDoc(bibliotecaRef(eId), { ...s, criadoEm: new Date(), atualizadoEm: new Date() });
+        setLogForn((p) => [...p, { tipo: "ok", msg: s.nome }]);
+        ok++;
+      } catch (e) {
+        setLogForn((p) => [...p, { tipo: "erro", msg: `${s.nome}: ${e.message}` }]);
+      }
+    }
+    setConcluidoForn(true);
+    setRodandoForn(false);
+    toast.success(`${ok}/${SERVICOS_FORNECIMENTO.length} serviços de fornecimento criados!`);
   }
 
   return (
@@ -188,14 +303,59 @@ export default function SeedBiblioteca() {
           <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
             <p className="text-sm font-semibold text-green-800 mb-1">✓ Biblioteca populada com sucesso!</p>
             <p className="text-xs text-green-700">
-              Agora vá em <strong>Biblioteca de Serviços</strong> para conferir e ajustar os valores conforme sua realidade.
-              Você pode remover a rota <code>/seed</code> do routes.jsx.
+              Agora vá em <strong>Biblioteca de Serviços</strong> para conferir e ajustar os valores.
             </p>
           </div>
         ) : (
           <button onClick={handleSeed} disabled={rodando}
             className="w-full bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
             {rodando ? `Criando serviços... (${log.length}/${SERVICOS.length})` : "Popular Biblioteca Agora"}
+          </button>
+        )}
+
+        {/* ── Seção de Fornecimento ── */}
+        <div className="mt-8 mb-3">
+          <p className="text-sm font-bold text-gray-700">Serviços de Fornecimento</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Pode rodar mesmo que a biblioteca já tenha sido populada — adiciona apenas os modelos de "Fornecimento apenas" (sem instalação), com opções de marca por BTU.
+          </p>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+          <div className="space-y-1">
+            {SERVICOS_FORNECIMENTO.map((s, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                <span className="w-4 h-4 rounded-full bg-blue-50 text-blue-400 text-[10px] flex items-center justify-center font-bold">{i + 1}</span>
+                {s.nome}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {logForn.length > 0 && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 space-y-1 max-h-40 overflow-y-auto">
+            {logForn.map((l, i) => (
+              <div key={i} className={`text-xs flex items-center gap-2 ${l.tipo === "ok" ? "text-green-700" : "text-red-600"}`}>
+                <span>{l.tipo === "ok" ? "✓" : "✗"}</span>
+                <span>{l.msg}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {concluidoForn ? (
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
+            <p className="text-sm font-semibold text-green-800">✓ Serviços de fornecimento adicionados!</p>
+            <p className="text-xs text-green-700 mt-1">
+              Agora ao criar um orçamento, escolha um desses serviços no Step 2 — a seção de instalação some automaticamente.
+            </p>
+          </div>
+        ) : (
+          <button onClick={handleSeedFornecimento} disabled={rodandoForn}
+            className="w-full bg-[#1a7a3a] text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
+            {rodandoForn
+              ? `Criando... (${logForn.length}/${SERVICOS_FORNECIMENTO.length})`
+              : "Adicionar Serviços de Fornecimento"}
           </button>
         )}
       </main>
