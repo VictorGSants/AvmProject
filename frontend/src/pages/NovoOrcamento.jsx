@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Search, Plus, Trash2, FileText, Building2 } from "lucide-react";
+import { Search, Plus, Trash2, FileText, Building2, PackageSearch, X } from "lucide-react";
 import Header from "../components/Header";
 import { listarClientes, criarCliente } from "../services/clienteService";
 import { listarBiblioteca } from "../services/bibliotecaService";
@@ -9,6 +9,7 @@ import {
 } from "../services/orcamentoService";
 import { EMPRESAID } from "../config/empresa";
 import { listarFornecedores, criarFornecedor } from "../services/fornecedorService";
+import { listarCatalogo } from "../services/catalogoService";
 import { toast } from "sonner";
 
 const STEPS = ["Cliente", "Serviço", "Itens", "Revisão"];
@@ -213,9 +214,11 @@ export default function NovoOrcamento() {
         )}
         {step === 2 && (
           <StepItens
+            eId={eId}
             itensEquip={itensEquip} setItensEquip={setItensEquip}
             itensInst={itensInst}   setItensInst={setItensInst}
-            opcoesEquip={opcoesEquip} opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx}
+            opcoesEquip={opcoesEquip} setOpcoesEquip={setOpcoesEquip}
+            opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx}
             equipApenasRef={equipApenasRef} setEquipApenasRef={setEquipApenasRef}
             servicoCategoria={servicoCategoria}
             onAvancar={() => setStep(3)}
@@ -545,22 +548,50 @@ function OpcoesSection({ opcoes, opcaoIdx, setOpcaoIdx, apenasRef = false }) {
 }
 
 // ── Step 3: Itens ──────────────────────────────────────────────────────────
-function StepItens({ itensEquip, setItensEquip, itensInst, setItensInst, opcoesEquip, opcaoIdx, setOpcaoIdx, equipApenasRef, setEquipApenasRef, servicoCategoria, onAvancar, onVoltar }) {
+function StepItens({ eId, itensEquip, setItensEquip, itensInst, setItensInst, opcoesEquip, setOpcoesEquip, opcaoIdx, setOpcaoIdx, equipApenasRef, setEquipApenasRef, servicoCategoria, onAvancar, onVoltar }) {
   const ehFornecimento = servicoCategoria === "fornecimento";
+  const [modalCatalogo, setModalCatalogo] = useState(false);
   const vlOpcao    = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
   const totalEquip = equipApenasRef
     ? 0
     : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
   const totalInst  = ehFornecimento ? 0 : itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
 
+  function handleAdicionarDoCatalogo(opcao) {
+    setOpcoesEquip((prev) => {
+      const novas = [...prev, opcao];
+      setOpcaoIdx(novas.length - 1);
+      return novas;
+    });
+    setModalCatalogo(false);
+    toast.success("Equipamento adicionado como opção!");
+  }
+
   return (
     <div>
+      {modalCatalogo && (
+        <ModalBuscaCatalogo
+          eId={eId}
+          onClose={() => setModalCatalogo(false)}
+          onAdicionar={handleAdicionarDoCatalogo}
+        />
+      )}
+
       <p className="text-sm text-gray-500 mb-4">Adicione os itens do orçamento</p>
 
       {ehFornecimento && (
-        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-4">
-          <span className="text-xs font-semibold text-blue-700">Fornecimento apenas</span>
-          <span className="text-xs text-blue-500">— instalação não inclusa neste orçamento</span>
+        <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-blue-700">Fornecimento apenas</span>
+            <span className="text-xs text-blue-500">— instalação não inclusa</span>
+          </div>
+          <button
+            onClick={() => setModalCatalogo(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-[#1a5ea8] bg-white border border-blue-200 rounded-lg px-2.5 py-1 active:scale-95 transition-all"
+          >
+            <PackageSearch size={13} />
+            Catálogo Uniar
+          </button>
         </div>
       )}
 
@@ -604,6 +635,197 @@ function StepItens({ itensEquip, setItensEquip, itensInst, setItensInst, opcoesE
           className="flex-1 bg-[#1a5ea8] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
           Revisar →
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal Busca Catálogo ───────────────────────────────────────────────────
+function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
+  const [produtos, setProdutos]             = useState([]);
+  const [loading, setLoading]               = useState(true);
+  const [busca, setBusca]                   = useState("");
+  const [filtroTipo, setFiltroTipo]         = useState("");   // "" | "FR" | "CR"
+  const [filtroCategoria, setFiltroCategoria] = useState(""); // "" | "hiwall" | "pisoteto" | "cortina"
+  const [margem, setMargem]                 = useState("30");
+  const [selecionado, setSelecionado]       = useState(null);
+
+  useEffect(() => {
+    listarCatalogo(eId).then(setProdutos).finally(() => setLoading(false));
+  }, [eId]);
+
+  const margemNum = parseFloat(margem) || 0;
+
+  const filtrados = produtos.filter((p) => {
+    if (filtroTipo && p.tipo !== filtroTipo) return false;
+    if (filtroCategoria && p.categoria !== filtroCategoria) return false;
+    if (!busca) return true;
+    const q = busca.toLowerCase();
+    return (
+      p.marca?.toLowerCase().includes(q) ||
+      p.modelo?.toLowerCase().includes(q) ||
+      String(p.capacidadeBtu).includes(q) ||
+      p.codigo?.toLowerCase().includes(q)
+    );
+  });
+
+  function nomeOpcao(p) {
+    const btu = p.capacidadeBtu ? `${p.capacidadeBtu.toLocaleString("pt-BR")} BTU/h` : (p.descricaoExtra || "");
+    return `${p.marca} ${p.modelo}${btu ? " " + btu : ""} ${p.tipo} ${p.tensao}`;
+  }
+
+  function calcPreco(p) {
+    return p.custoUniar * (1 + margemNum / 100);
+  }
+
+  function handleAdicionar() {
+    if (!selecionado) return;
+    onAdicionar({
+      nome: nomeOpcao(selecionado),
+      valorUnit: Math.round(calcPreco(selecionado) * 100) / 100,
+      custoUniar: selecionado.custoUniar,
+      margem: margemNum,
+    });
+  }
+
+  const Pill = ({ label, valor, ativo, onClick }) => (
+    <button
+      onClick={onClick}
+      className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
+        ativo
+          ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
+          : "bg-white border-gray-200 text-gray-500"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 bg-slate-50 flex flex-col">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <PackageSearch size={18} className="text-[#1a5ea8]" />
+          <p className="text-sm font-bold text-gray-800">Catálogo Uniar</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
+          <X size={18} />
+        </button>
+      </div>
+
+      <div className="flex-grow overflow-y-auto p-4 space-y-3">
+        {/* Margem */}
+        <div className="bg-white border border-gray-100 rounded-2xl p-3 flex items-center gap-3">
+          <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">Minha margem %</label>
+          <input
+            type="number" min={0} max={200} step={0.5}
+            value={margem}
+            onChange={(e) => setMargem(e.target.value)}
+            className="w-20 px-2 py-1.5 text-sm font-bold border border-[#1a5ea8] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] text-center"
+          />
+          {selecionado && (
+            <span className="text-xs text-gray-500 flex-1">
+              Custo {fmtBRL(selecionado.custoUniar)} → <strong className="text-green-700">{fmtBRL(calcPreco(selecionado))}</strong>
+            </span>
+          )}
+        </div>
+
+        {/* Busca */}
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            autoFocus type="text" placeholder="Buscar marca, modelo, BTU..."
+            value={busca} onChange={(e) => setBusca(e.target.value)}
+            className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]"
+          />
+        </div>
+
+        {/* Filtros */}
+        <div className="flex flex-wrap gap-2">
+          <Pill label="Todos" valor="" ativo={!filtroTipo && !filtroCategoria}
+            onClick={() => { setFiltroTipo(""); setFiltroCategoria(""); }} />
+          <Pill label="Só Fria (FR)" valor="FR" ativo={filtroTipo === "FR"}
+            onClick={() => setFiltroTipo(filtroTipo === "FR" ? "" : "FR")} />
+          <Pill label="Q/F (CR)" valor="CR" ativo={filtroTipo === "CR"}
+            onClick={() => setFiltroTipo(filtroTipo === "CR" ? "" : "CR")} />
+          <Pill label="Hi-Wall" valor="hiwall" ativo={filtroCategoria === "hiwall"}
+            onClick={() => setFiltroCategoria(filtroCategoria === "hiwall" ? "" : "hiwall")} />
+          <Pill label="Piso-Teto" valor="pisoteto" ativo={filtroCategoria === "pisoteto"}
+            onClick={() => setFiltroCategoria(filtroCategoria === "pisoteto" ? "" : "pisoteto")} />
+          <Pill label="Cortina" valor="cortina" ativo={filtroCategoria === "cortina"}
+            onClick={() => setFiltroCategoria(filtroCategoria === "cortina" ? "" : "cortina")} />
+        </div>
+
+        {/* Lista */}
+        {loading ? (
+          <p className="text-sm text-gray-400 text-center py-8">Carregando catálogo...</p>
+        ) : filtrados.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">Nenhum produto encontrado</p>
+        ) : (
+          <div className="space-y-2 pb-24">
+            {filtrados.map((p) => {
+              const ativo = selecionado?.id === p.id;
+              const preco = calcPreco(p);
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => setSelecionado(ativo ? null : p)}
+                  className={`bg-white border rounded-xl p-3 cursor-pointer transition-all ${
+                    ativo ? "border-[#1a5ea8] bg-blue-50" : "border-gray-100 hover:border-[#7b8cd4]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 leading-snug">{p.marca} {p.modelo}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {p.capacidadeBtu > 0 && (
+                          <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                            {p.capacidadeBtu.toLocaleString("pt-BR")} BTU
+                          </span>
+                        )}
+                        {p.descricaoExtra && (
+                          <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">
+                            {p.descricaoExtra}
+                          </span>
+                        )}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                          p.tipo === "FR" ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600"
+                        }`}>
+                          {p.tipo === "FR" ? "Só Fria" : "Q/F"}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{p.tensao}</span>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-sm font-bold text-green-700">{fmtBRL(preco)}</p>
+                      <p className="text-[10px] text-gray-400">custo {fmtBRL(p.custoUniar)}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Footer fixo */}
+      <div className="bg-white border-t border-gray-100 p-4">
+        {selecionado ? (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 text-center truncate">
+              {nomeOpcao(selecionado)} — <strong>{fmtBRL(calcPreco(selecionado))}</strong>
+            </p>
+            <button
+              onClick={handleAdicionar}
+              className="w-full bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all"
+            >
+              Adicionar como opção de equipamento
+            </button>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 text-center py-1">Selecione um produto acima para adicionar</p>
+        )}
       </div>
     </div>
   );

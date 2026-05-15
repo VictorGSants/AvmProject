@@ -31,3 +31,9 @@ export const orcamentosRef = (empresaId) =>
 
 export const orcamentoDoc = (empresaId, orcamentoId) =>
   doc(db, `empresas/${empresaId}/orcamentos/${orcamentoId}`);
+
+export const catalogoRef = (empresaId) =>
+  collection(db, `empresas/${empresaId}/catalogo`);
+
+export const catalogoDoc = (empresaId, itemId) =>
+  doc(db, `empresas/${empresaId}/catalogo/${itemId}`);
