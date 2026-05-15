@@ -648,15 +648,39 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
   const [busca, setBusca]                     = useState("");
   const [filtroTipo, setFiltroTipo]           = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("");
-  const [margem, setMargem]                   = useState("30");
   const [selecionado, setSelecionado]         = useState(null);
+  const [meuCusto, setMeuCusto]               = useState("");
+  const [margem, setMargem]                   = useState("30");
   const [precoVenda, setPrecoVenda]           = useState("");
 
   useEffect(() => {
     listarCatalogo(eId).then(setProdutos).finally(() => setLoading(false));
   }, [eId]);
 
-  const margemNum = parseFloat(margem) || 0;
+  function recalcPreco(custo, mg) {
+    const c = parseFloat(custo) || 0;
+    const m = parseFloat(mg)    || 0;
+    return Math.round(c * (1 + m / 100) * 100) / 100;
+  }
+
+  function handleSelectProduto(p) {
+    const jaAtivo = selecionado?.id === p.id;
+    if (jaAtivo) { setSelecionado(null); setMeuCusto(""); setPrecoVenda(""); return; }
+    setSelecionado(p);
+    const custo = String(p.tabelaUniar ?? p.custoUniar ?? "");
+    setMeuCusto(custo);
+    setPrecoVenda(String(recalcPreco(custo, margem)));
+  }
+
+  function handleCustoChange(val) {
+    setMeuCusto(val);
+    setPrecoVenda(String(recalcPreco(val, margem)));
+  }
+
+  function handleMargemChange(val) {
+    setMargem(val);
+    setPrecoVenda(String(recalcPreco(meuCusto, val)));
+  }
 
   const filtrados = produtos.filter((p) => {
     if (filtroTipo && p.tipo !== filtroTipo) return false;
@@ -676,43 +700,21 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
     return `${p.marca} ${p.modelo}${btu ? " " + btu : ""} ${p.tipo} ${p.tensao}`;
   }
 
-  function calcPreco(p) {
-    return Math.round(p.custoUniar * (1 + margemNum / 100) * 100) / 100;
-  }
-
-  function handleSelectProduto(p) {
-    const jaAtivo = selecionado?.id === p.id;
-    setSelecionado(jaAtivo ? null : p);
-    setPrecoVenda(jaAtivo ? "" : String(calcPreco(p)));
-  }
-
-  function handleMargemChange(val) {
-    setMargem(val);
-    const m = parseFloat(val) || 0;
-    if (selecionado) {
-      setPrecoVenda(String(Math.round(selecionado.custoUniar * (1 + m / 100) * 100) / 100));
-    }
-  }
-
   function handleAdicionar() {
     if (!selecionado) return;
     onAdicionar({
       nome: nomeOpcao(selecionado),
-      valorUnit: parseFloat(precoVenda) || calcPreco(selecionado),
-      custoUniar: selecionado.custoUniar,
-      margem: margemNum,
+      valorUnit: parseFloat(precoVenda) || 0,
+      custoUniar: parseFloat(meuCusto) || 0,
+      margem: parseFloat(margem) || 0,
     });
   }
 
-  const Pill = ({ label, valor, ativo, onClick }) => (
-    <button
-      onClick={onClick}
+  const Pill = ({ label, ativo, onClick }) => (
+    <button onClick={onClick}
       className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
-        ativo
-          ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
-          : "bg-white border-gray-200 text-gray-500"
-      }`}
-    >
+        ativo ? "bg-[#1a5ea8] border-[#1a5ea8] text-white" : "bg-white border-gray-200 text-gray-500"
+      }`}>
       {label}
     </button>
   );
@@ -731,66 +733,50 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
       </div>
 
       <div className="flex-grow overflow-y-auto p-4 space-y-3">
-        {/* Margem */}
-        <div className="bg-white border border-gray-100 rounded-2xl p-3 flex items-center gap-3">
-          <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">Minha margem %</label>
-          <input
-            type="number" min={0} max={200} step={0.5}
-            value={margem}
-            onChange={(e) => handleMargemChange(e.target.value)}
-            className="w-20 px-2 py-1.5 text-sm font-bold border border-[#1a5ea8] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] text-center"
-          />
-          {selecionado && (
-            <span className="text-xs text-gray-400 flex-1">
-              custo {fmtBRL(selecionado.custoUniar)}
-            </span>
-          )}
-        </div>
-
         {/* Busca */}
         <div className="relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            autoFocus type="text" placeholder="Buscar marca, modelo, BTU..."
+          <input autoFocus type="text" placeholder="Buscar marca, modelo, BTU..."
             value={busca} onChange={(e) => setBusca(e.target.value)}
-            className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]"
-          />
+            className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
         </div>
 
         {/* Filtros */}
         <div className="flex flex-wrap gap-2">
-          <Pill label="Todos" valor="" ativo={!filtroTipo && !filtroCategoria}
+          <Pill label="Todos" ativo={!filtroTipo && !filtroCategoria}
             onClick={() => { setFiltroTipo(""); setFiltroCategoria(""); }} />
-          <Pill label="Só Fria (FR)" valor="FR" ativo={filtroTipo === "FR"}
+          <Pill label="Só Fria (FR)" ativo={filtroTipo === "FR"}
             onClick={() => setFiltroTipo(filtroTipo === "FR" ? "" : "FR")} />
-          <Pill label="Q/F (CR)" valor="CR" ativo={filtroTipo === "CR"}
+          <Pill label="Q/F (CR)" ativo={filtroTipo === "CR"}
             onClick={() => setFiltroTipo(filtroTipo === "CR" ? "" : "CR")} />
-          <Pill label="Hi-Wall" valor="hiwall" ativo={filtroCategoria === "hiwall"}
+          <Pill label="Hi-Wall" ativo={filtroCategoria === "hiwall"}
             onClick={() => setFiltroCategoria(filtroCategoria === "hiwall" ? "" : "hiwall")} />
-          <Pill label="Piso-Teto" valor="pisoteto" ativo={filtroCategoria === "pisoteto"}
+          <Pill label="Piso-Teto" ativo={filtroCategoria === "pisoteto"}
             onClick={() => setFiltroCategoria(filtroCategoria === "pisoteto" ? "" : "pisoteto")} />
-          <Pill label="Cortina" valor="cortina" ativo={filtroCategoria === "cortina"}
+          <Pill label="Cortina" ativo={filtroCategoria === "cortina"}
             onClick={() => setFiltroCategoria(filtroCategoria === "cortina" ? "" : "cortina")} />
         </div>
 
         {/* Lista */}
         {loading ? (
           <p className="text-sm text-gray-400 text-center py-8">Carregando catálogo...</p>
+        ) : produtos.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-sm text-gray-500 font-semibold mb-1">Catálogo vazio</p>
+            <p className="text-xs text-gray-400">Acesse <strong>/seed</strong> e clique em<br/>"Importar Catálogo Uniar" primeiro.</p>
+          </div>
         ) : filtrados.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">Nenhum produto encontrado</p>
         ) : (
-          <div className="space-y-2 pb-24">
+          <div className="space-y-2 pb-48">
             {filtrados.map((p) => {
               const ativo = selecionado?.id === p.id;
-              const preco = calcPreco(p);
+              const tabelaUniar = p.tabelaUniar ?? p.custoUniar ?? 0;
               return (
-                <div
-                  key={p.id}
-                  onClick={() => handleSelectProduto(p)}
+                <div key={p.id} onClick={() => handleSelectProduto(p)}
                   className={`bg-white border rounded-xl p-3 cursor-pointer transition-all ${
                     ativo ? "border-[#1a5ea8] bg-blue-50" : "border-gray-100 hover:border-[#7b8cd4]"
-                  }`}
-                >
+                  }`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-gray-800 leading-snug">{p.marca} {p.modelo}</p>
@@ -814,8 +800,8 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-sm font-bold text-green-700">{fmtBRL(preco)}</p>
-                      <p className="text-[10px] text-gray-400">custo {fmtBRL(p.custoUniar)}</p>
+                      <p className="text-xs text-gray-400">tabela Uniar</p>
+                      <p className="text-sm font-semibold text-gray-700">{fmtBRL(tabelaUniar)}</p>
                     </div>
                   </div>
                 </div>
@@ -825,29 +811,38 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
         )}
       </div>
 
-      {/* Footer fixo */}
+      {/* Footer fixo — cálculo de preço */}
       <div className="bg-white border-t border-gray-100 p-4">
         {selecionado ? (
           <div className="space-y-2">
             <p className="text-xs text-gray-500 truncate font-medium">{nomeOpcao(selecionado)}</p>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-500 whitespace-nowrap">Preço de venda (R$)</label>
-              <input
-                type="number" min={0} step={0.01}
-                value={precoVenda}
-                onChange={(e) => setPrecoVenda(e.target.value)}
-                className="flex-1 px-2 py-1.5 text-sm font-bold border border-[#1a5ea8] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] text-center"
-              />
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-[10px] text-gray-400 block mb-1">Meu custo (R$)</label>
+                <input type="number" min={0} step={0.01} value={meuCusto}
+                  onChange={(e) => handleCustoChange(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 block mb-1">Margem %</label>
+                <input type="number" min={0} step={0.5} value={margem}
+                  onChange={(e) => handleMargemChange(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 block mb-1">Preço venda (R$)</label>
+                <input type="number" min={0} step={0.01} value={precoVenda}
+                  onChange={(e) => setPrecoVenda(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm font-bold border border-[#1a5ea8] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center text-green-700" />
+              </div>
             </div>
-            <button
-              onClick={handleAdicionar}
-              className="w-full bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all"
-            >
+            <button onClick={handleAdicionar}
+              className="w-full bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all">
               Adicionar como opção de equipamento
             </button>
           </div>
         ) : (
-          <p className="text-xs text-gray-400 text-center py-1">Selecione um produto acima para adicionar</p>
+          <p className="text-xs text-gray-400 text-center py-1">Selecione um produto acima</p>
         )}
       </div>
     </div>
