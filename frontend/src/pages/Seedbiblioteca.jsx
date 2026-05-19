@@ -261,6 +261,25 @@ const SERVICOS_FORNECIMENTO = [
   },
 ];
 
+const SERVICOS_CORRETIVA = [
+  {
+    nome: "Manutenção Corretiva",
+    categoria: "corretiva",
+    descricao: "Diagnóstico e reparo de falha em sistema de ar-condicionado. Inclui visita técnica, identificação da falha, mão de obra de reparo e materiais de consumo. Peças de reposição cobradas à parte mediante aprovação.",
+    maoDeObra: 280, margemLucro: 35, valorPorMetroTubulacao: 0,
+    garantia: "90 dias",
+    materiais: [], opcoesEquipamento: [],
+  },
+  {
+    nome: "Manutenção Corretiva + Preventiva",
+    categoria: "corretiva",
+    descricao: "Manutenção corretiva (diagnóstico e reparo de falha) combinada com manutenção preventiva completa conforme ABNT NBR 16401. Inclui reparo, limpeza de filtros, evaporador, condensador, verificação de gás, dreno e relatório técnico.",
+    maoDeObra: 380, margemLucro: 35, valorPorMetroTubulacao: 0,
+    garantia: "90 dias",
+    materiais: [], opcoesEquipamento: [],
+  },
+];
+
 const SERVICOS = [
   {
     nome: "Instalação Split Hi-Wall 9.000 BTU/h",
@@ -371,6 +390,9 @@ export default function SeedBiblioteca() {
   const [rodandoCat, setRodandoCat]         = useState(false);
   const [logCat, setLogCat]                 = useState([]);
   const [concluidoCat, setConcluidoCat]     = useState(false);
+  const [rodandoCor, setRodandoCor]         = useState(false);
+  const [logCor, setLogCor]                 = useState([]);
+  const [concluidoCor, setConcluidoCor]     = useState(false);
 
   async function handleSeed() {
     setRodando(true);
@@ -426,6 +448,24 @@ export default function SeedBiblioteca() {
     setConcluidoCat(true);
     setRodandoCat(false);
     toast.success(`${ok}/${CATALOGO_UNIAR.length} produtos adicionados ao catálogo!`);
+  }
+
+  async function handleSeedCorretiva() {
+    setRodandoCor(true);
+    setLogCor([]);
+    let ok = 0;
+    for (const s of SERVICOS_CORRETIVA) {
+      try {
+        await addDoc(bibliotecaRef(eId), { ...s, criadoEm: new Date(), atualizadoEm: new Date() });
+        setLogCor((p) => [...p, { tipo: "ok", msg: s.nome }]);
+        ok++;
+      } catch (e) {
+        setLogCor((p) => [...p, { tipo: "erro", msg: `${s.nome}: ${e.message}` }]);
+      }
+    }
+    setConcluidoCor(true);
+    setRodandoCor(false);
+    toast.success(`${ok}/${SERVICOS_CORRETIVA.length} modelos de corretiva criados!`);
   }
 
   return (
@@ -556,6 +596,51 @@ export default function SeedBiblioteca() {
             {rodandoCat
               ? `Importando... (${logCat.length}/${CATALOGO_UNIAR.length})`
               : `Importar Catálogo Uniar (${CATALOGO_UNIAR.length} produtos)`}
+          </button>
+        )}
+        {/* ── Seção Manutenção Corretiva ── */}
+        <div className="mt-8 mb-3">
+          <p className="text-sm font-bold text-gray-700">Modelos de Manutenção Corretiva</p>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Adiciona 2 modelos com <code>categoria: "corretiva"</code> — ao gerar o PDF, as condições de corretiva são aplicadas automaticamente.
+          </p>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+          <div className="space-y-1">
+            {SERVICOS_CORRETIVA.map((s, i) => (
+              <div key={i} className="flex items-center gap-2 text-sm text-gray-600">
+                <span className="w-4 h-4 rounded-full bg-orange-50 text-orange-400 text-[10px] flex items-center justify-center font-bold">{i + 1}</span>
+                {s.nome}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {logCor.length > 0 && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4 space-y-1 max-h-40 overflow-y-auto">
+            {logCor.map((l, i) => (
+              <div key={i} className={`text-xs flex items-center gap-2 ${l.tipo === "ok" ? "text-green-700" : "text-red-600"}`}>
+                <span>{l.tipo === "ok" ? "✓" : "✗"}</span>
+                <span>{l.msg}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {concluidoCor ? (
+          <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center mb-6">
+            <p className="text-sm font-semibold text-green-800">✓ Modelos de corretiva adicionados!</p>
+            <p className="text-xs text-green-700 mt-1">
+              Ao selecionar esses serviços em um orçamento, o PDF usará as condições de manutenção corretiva automaticamente.
+            </p>
+          </div>
+        ) : (
+          <button onClick={handleSeedCorretiva} disabled={rodandoCor}
+            className="w-full bg-[#c2410c] text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all mb-6">
+            {rodandoCor
+              ? `Criando... (${logCor.length}/${SERVICOS_CORRETIVA.length})`
+              : "Adicionar Modelos de Corretiva"}
           </button>
         )}
       </main>

@@ -25,6 +25,7 @@ import ListaOrcamentos from "../pages/ListaOrcamentos";
 import NovoOrcamento from "../pages/NovoOrcamento";
 import DetalheOrcamento from "../pages/DetalheOrcamento";
 import GerenciarBiblioteca from "../pages/GerenciarBiblioteca";
+import GerenciarClientes from "../pages/GerenciarClientes";
 import SeedBiblioteca from "../pages/Seedbiblioteca";
 import HistoricoRotinas from "../pages/HistoricoRotinas";
 
@@ -42,6 +43,7 @@ export default function RouterApp() {
           <Route path="/gestor/:empresaId/orcamentos/novo"                       element={<ProtectedRoutes><NovoOrcamento /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/orcamentos/:orcamentoId/editar"      element={<ProtectedRoutes><NovoOrcamento /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/orcamentos/:orcamentoId"             element={<ProtectedRoutes><DetalheOrcamento /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/clientes"           element={<ProtectedRoutes><GerenciarClientes /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/biblioteca"         element={<ProtectedRoutes><GerenciarBiblioteca /></ProtectedRoutes>} />
           <Route path="/gestor/:empresaId/rotinas"            element={<ProtectedRoutes><HistoricoRotinas /></ProtectedRoutes>} />
 

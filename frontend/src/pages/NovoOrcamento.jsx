@@ -40,9 +40,10 @@ export default function NovoOrcamento() {
   const [validade, setValidade]               = useState("30 dias");
   const [prazoExecucao, setPrazoExecucao]     = useState("30 dias");
   const [servicoCategoria, setServicoCategoria] = useState("");
-  const [exibirFornecedor, setExibirFornecedor] = useState(false);
-  const [fornecedor, setFornecedor]             = useState(null);
-  const [direcionadoA, setDirecionadoA]         = useState("");
+  const [exibirFornecedor, setExibirFornecedor]         = useState(false);
+  const [fornecedor, setFornecedor]                     = useState(null);
+  const [exibirDadosBancarios, setExibirDadosBancarios] = useState(true);
+  const [direcionadoA, setDirecionadoA]                 = useState("");
   const [aoCuidadoDe, setAoCuidadoDe]           = useState("");
   const [responsavel, setResponsavel]           = useState("");
 
@@ -76,6 +77,7 @@ export default function NovoOrcamento() {
         setServicoCategoria(orc.servicoCategoria || "");
         setExibirFornecedor(orc.exibirDadosFornecedor ?? false);
         setFornecedor(orc.fornecedor || null);
+        setExibirDadosBancarios(orc.exibirDadosBancarios ?? true);
         setDirecionadoA(orc.direcionadoA   || "");
         setAoCuidadoDe(orc.aoCuidadoDe    || "");
         setResponsavel(orc.responsavel     || "");
@@ -146,6 +148,7 @@ export default function NovoOrcamento() {
         servicoCategoria,
         exibirDadosFornecedor: exibirFornecedor,
         fornecedor: fornecedor || null,
+        exibirDadosBancarios,
         direcionadoA: direcionadoA.trim() || "",
         aoCuidadoDe:  aoCuidadoDe.trim()  || "",
         responsavel:  responsavel.trim()   || "",
@@ -241,9 +244,11 @@ export default function NovoOrcamento() {
             onPrazoChange={setPrazoExecucao}
             exibirFornecedor={exibirFornecedor} setExibirFornecedor={setExibirFornecedor}
             fornecedor={fornecedor} setFornecedor={setFornecedor}
+            exibirDadosBancarios={exibirDadosBancarios} setExibirDadosBancarios={setExibirDadosBancarios}
             direcionadoA={direcionadoA} onDirecionadoAChange={setDirecionadoA}
             aoCuidadoDe={aoCuidadoDe}   onAoCuidadoDeChange={setAoCuidadoDe}
             responsavel={responsavel}   onResponsavelChange={setResponsavel}
+            clienteId={cliente?.id}
             onVoltar={() => setStep(2)}
             onRascunho={() => handleSalvar(true)}
             onFinalizar={() => handleSalvar(false)}
@@ -558,14 +563,9 @@ function StepItens({ eId, itensEquip, setItensEquip, itensInst, setItensInst, op
     : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
   const totalInst  = ehFornecimento ? 0 : itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
 
-  function handleAdicionarDoCatalogo(opcao) {
-    setOpcoesEquip((prev) => {
-      const novas = [...prev, opcao];
-      setOpcaoIdx(novas.length - 1);
-      return novas;
-    });
-    setModalCatalogo(false);
-    toast.success("Equipamento adicionado como opção!");
+  function handleAdicionarDoCatalogo(item) {
+    setItensEquip((prev) => [...prev, item]);
+    toast.success("Equipamento adicionado! Selecione outro ou feche o catálogo.");
   }
 
   return (
@@ -650,35 +650,36 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
   const [filtroCategoria, setFiltroCategoria] = useState("");
   const [selecionado, setSelecionado]         = useState(null);
   const [meuCusto, setMeuCusto]               = useState("");
-  const [margem, setMargem]                   = useState("30");
+  const [desconto, setDesconto]               = useState("0");
   const [precoVenda, setPrecoVenda]           = useState("");
+  const [qtd, setQtd]                         = useState("1");
 
   useEffect(() => {
     listarCatalogo(eId).then(setProdutos).finally(() => setLoading(false));
   }, [eId]);
 
-  function recalcPreco(custo, mg) {
+  function recalcPreco(custo, desc) {
     const c = parseFloat(custo) || 0;
-    const m = parseFloat(mg)    || 0;
-    return Math.round(c * (1 + m / 100) * 100) / 100;
+    const d = parseFloat(desc)  || 0;
+    return Math.round(c * (1 - d / 100) * 100) / 100;
   }
 
   function handleSelectProduto(p) {
     const jaAtivo = selecionado?.id === p.id;
-    if (jaAtivo) { setSelecionado(null); setMeuCusto(""); setPrecoVenda(""); return; }
+    if (jaAtivo) { setSelecionado(null); setMeuCusto(""); setPrecoVenda(""); setQtd("1"); return; }
     setSelecionado(p);
     const custo = String(p.tabelaUniar ?? p.custoUniar ?? "");
     setMeuCusto(custo);
-    setPrecoVenda(String(recalcPreco(custo, margem)));
+    setPrecoVenda(String(recalcPreco(custo, desconto)));
   }
 
   function handleCustoChange(val) {
     setMeuCusto(val);
-    setPrecoVenda(String(recalcPreco(val, margem)));
+    setPrecoVenda(String(recalcPreco(val, desconto)));
   }
 
-  function handleMargemChange(val) {
-    setMargem(val);
+  function handleDescontoChange(val) {
+    setDesconto(val);
     setPrecoVenda(String(recalcPreco(meuCusto, val)));
   }
 
@@ -703,11 +704,15 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
   function handleAdicionar() {
     if (!selecionado) return;
     onAdicionar({
-      nome: nomeOpcao(selecionado),
-      valorUnit: parseFloat(precoVenda) || 0,
-      custoUniar: parseFloat(meuCusto) || 0,
-      margem: parseFloat(margem) || 0,
+      descricao: nomeOpcao(selecionado),
+      qtd: parseInt(qtd) || 1,
+      vlUnit: parseFloat(precoVenda) || 0,
     });
+    setSelecionado(null);
+    setMeuCusto("");
+    setPrecoVenda("");
+    setQtd("1");
+    setDesconto("0");
   }
 
   const Pill = ({ label, ativo, onClick }) => (
@@ -816,17 +821,23 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
         {selecionado ? (
           <div className="space-y-2">
             <p className="text-xs text-gray-500 truncate font-medium">{nomeOpcao(selecionado)}</p>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               <div>
-                <label className="text-[10px] text-gray-400 block mb-1">Meu custo (R$)</label>
+                <label className="text-[10px] text-gray-400 block mb-1">Qtd.</label>
+                <input type="number" min={1} step={1} value={qtd}
+                  onChange={(e) => setQtd(e.target.value)}
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
+              </div>
+              <div>
+                <label className="text-[10px] text-gray-400 block mb-1">Tabela Uniar (R$)</label>
                 <input type="number" min={0} step={0.01} value={meuCusto}
                   onChange={(e) => handleCustoChange(e.target.value)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
               </div>
               <div>
-                <label className="text-[10px] text-gray-400 block mb-1">Margem %</label>
-                <input type="number" min={0} step={0.5} value={margem}
-                  onChange={(e) => handleMargemChange(e.target.value)}
+                <label className="text-[10px] text-gray-400 block mb-1">Desconto %</label>
+                <input type="number" min={0} max={100} step={0.5} value={desconto}
+                  onChange={(e) => handleDescontoChange(e.target.value)}
                   className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
               </div>
               <div>
@@ -838,11 +849,11 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
             </div>
             <button onClick={handleAdicionar}
               className="w-full bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all">
-              Adicionar como opção de equipamento
+              + Adicionar ao orçamento
             </button>
           </div>
         ) : (
-          <p className="text-xs text-gray-400 text-center py-1">Selecione um produto acima</p>
+          <p className="text-xs text-gray-400 text-center py-2">Selecione um produto acima para configurar e adicionar</p>
         )}
       </div>
     </div>
@@ -870,9 +881,11 @@ function StepRevisao({
   onDescChange, onGarantiaChange, onPagamentoChange, onValidadeChange, onPrazoChange,
   exibirFornecedor, setExibirFornecedor,
   fornecedor, setFornecedor,
+  exibirDadosBancarios, setExibirDadosBancarios,
   direcionadoA, onDirecionadoAChange,
   aoCuidadoDe, onAoCuidadoDeChange,
   responsavel, onResponsavelChange,
+  clienteId,
   onVoltar, onRascunho, onFinalizar, salvando, modoEditar,
 }) {
   const vlOpcao       = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
@@ -976,10 +989,35 @@ function StepRevisao({
         )}
       </div>
 
+      {/* Toggle dados bancários */}
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Meus dados bancários no PDF
+          </p>
+          <button
+            onClick={() => setExibirDadosBancarios(!exibirDadosBancarios)}
+            className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-colors ${
+              exibirDadosBancarios
+                ? "bg-blue-50 border-blue-200 text-blue-700"
+                : "bg-gray-50 border-gray-200 text-gray-400"
+            }`}
+          >
+            {exibirDadosBancarios ? "Incluído" : "Ocultar meus dados"}
+          </button>
+        </div>
+        {!exibirDadosBancarios && (
+          <p className="text-xs text-gray-400 mt-1.5">
+            Seus dados bancários serão omitidos. Os dados do fornecedor (se selecionado) continuam aparecendo.
+          </p>
+        )}
+      </div>
+
       <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Destinatário no PDF</p>
         <SeletorDestinatario
           eId={eId}
+          clienteId={clienteId}
           direcionadoA={direcionadoA} setDirecionadoA={onDirecionadoAChange}
           aoCuidadoDe={aoCuidadoDe}   setAoCuidadoDe={onAoCuidadoDeChange}
           responsavel={responsavel}   setResponsavel={onResponsavelChange}
@@ -1126,7 +1164,8 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
 }
 
 // ── Seletor Destinatário (Entidade → Órgão → Responsável) ────────────────
-function SeletorDestinatario({ eId, direcionadoA, setDirecionadoA, aoCuidadoDe, setAoCuidadoDe, responsavel, setResponsavel }) {
+// clienteId: quando fornecido, filtra para mostrar apenas entidades deste cliente
+function SeletorDestinatario({ eId, clienteId, direcionadoA, setDirecionadoA, aoCuidadoDe, setAoCuidadoDe, responsavel, setResponsavel }) {
   const [entidades, setEntidades]     = useState([]);
   const [loading, setLoading]         = useState(true);
   const [entidadeSel, setEntidadeSel] = useState(null);
@@ -1140,13 +1179,26 @@ function SeletorDestinatario({ eId, direcionadoA, setDirecionadoA, aoCuidadoDe, 
 
   useEffect(() => {
     listarEntidades(eId).then((lista) => {
-      setEntidades(lista);
+      // Se há clienteId, prioriza entidades vinculadas; se não houver nenhuma vinculada, mostra todas
+      const vinculadas = clienteId ? lista.filter((e) => e.clienteId === clienteId) : lista;
+      const exibir = vinculadas.length > 0 ? vinculadas : lista;
+      setEntidades(exibir);
       if (direcionadoA) {
-        const found = lista.find((e) => e.nome === direcionadoA);
-        if (found) setEntidadeSel(found);
+        const found = exibir.find((e) => e.nome === direcionadoA);
+        if (found) {
+          setEntidadeSel(found);
+        } else if (vinculadas.length === 0 && lista.length > 0) {
+          // tenta buscar na lista completa (modo edição de orçamento antigo)
+          const fallback = lista.find((e) => e.nome === direcionadoA);
+          if (fallback) setEntidadeSel(fallback);
+        }
+      } else if (vinculadas.length === 1) {
+        // auto-seleciona quando há exatamente uma entidade vinculada ao cliente
+        setEntidadeSel(vinculadas[0]);
+        setDirecionadoA(vinculadas[0].nome);
       }
     }).finally(() => setLoading(false));
-  }, [eId]);
+  }, [eId, clienteId]);
 
   const orgaos = entidadeSel?.orgaos || [];
   const orgaoObj = orgaos.find((o) => o.nome === aoCuidadoDe);
@@ -1171,8 +1223,11 @@ function SeletorDestinatario({ eId, direcionadoA, setDirecionadoA, aoCuidadoDe, 
     if (!novoEntNome.trim()) return;
     setSalvando(true);
     try {
-      const id = await criarEntidade(eId, { nome: novoEntNome.trim(), orgaos: [] });
-      const nova = { id, nome: novoEntNome.trim(), orgaos: [] };
+      // vincula ao cliente se disponível
+      const dadosEnt = { nome: novoEntNome.trim(), orgaos: [] };
+      if (clienteId) dadosEnt.clienteId = clienteId;
+      const id = await criarEntidade(eId, dadosEnt);
+      const nova = { id, ...dadosEnt };
       setEntidades((prev) => [...prev, nova]);
       selecionarEntidade(nova);
       setModoNovoEnt(false);
@@ -1269,11 +1324,6 @@ function SeletorDestinatario({ eId, direcionadoA, setDirecionadoA, aoCuidadoDe, 
             onSave={handleNovaEntidade} onCancel={() => { setModoNovoEnt(false); setNovoEntNome(""); }}
             saving={salvando} />
         )}
-        {/* fallback texto livre se não há entidade selecionada mas tem valor */}
-        {!entidadeSel && direcionadoA && (
-          <input type="text" value={direcionadoA} onChange={(e) => setDirecionadoA(e.target.value)}
-            className="mt-2 w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg" />
-        )}
       </div>
 
       {/* ── Nível 2: Órgão ── */}
@@ -1328,6 +1378,29 @@ function SeletorDestinatario({ eId, direcionadoA, setDirecionadoA, aoCuidadoDe, 
           )}
         </div>
       )}
+
+      {/* Campos de texto sempre editáveis — aparecem independentemente da seleção de chips */}
+      <div className="space-y-2 pt-2 border-t border-gray-100">
+        <p className="text-[10px] text-gray-400 uppercase font-semibold tracking-wide">Texto que aparecerá no PDF</p>
+        <div>
+          <label className="text-[10px] text-gray-500 block mb-0.5">Direcionado a</label>
+          <input type="text" value={direcionadoA} onChange={(e) => setDirecionadoA(e.target.value)}
+            placeholder="Ex: FUNCAMP, Unicamp..."
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+        </div>
+        <div>
+          <label className="text-[10px] text-gray-500 block mb-0.5">Aos cuidados de</label>
+          <input type="text" value={aoCuidadoDe} onChange={(e) => setAoCuidadoDe(e.target.value)}
+            placeholder="Ex: Instituto de Biologia, DSTr..."
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+        </div>
+        <div>
+          <label className="text-[10px] text-gray-500 block mb-0.5">Responsável</label>
+          <input type="text" value={responsavel} onChange={(e) => setResponsavel(e.target.value)}
+            placeholder="Nome do responsável"
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+        </div>
+      </div>
 
       {(direcionadoA || aoCuidadoDe || responsavel) && (
         <button onClick={limpar} className="text-xs text-red-400 font-medium pt-1">

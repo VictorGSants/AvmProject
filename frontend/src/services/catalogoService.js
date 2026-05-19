@@ -1,11 +1,15 @@
-import {
-  getDocs, addDoc, updateDoc, deleteDoc, query, orderBy,
-} from "firebase/firestore";
+import { getDocs, addDoc, updateDoc, deleteDoc } from "firebase/firestore";
 import { catalogoRef, catalogoDoc } from "../config/firebasePaths";
 
 export async function listarCatalogo(empresaId) {
-  const snap = await getDocs(query(catalogoRef(empresaId), orderBy("marca"), orderBy("capacidadeBtu")));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const snap = await getDocs(catalogoRef(empresaId));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const m = (a.marca || "").localeCompare(b.marca || "");
+      if (m !== 0) return m;
+      return (a.capacidadeBtu || 0) - (b.capacidadeBtu || 0);
+    });
 }
 
 export async function criarItemCatalogo(empresaId, dados) {

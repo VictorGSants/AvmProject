@@ -52,6 +52,10 @@ export async function gerarPdfOrcamento(orcamento) {
     processo    = "",
     clienteNome = "---",
     clienteCnpj = "",
+    clienteCpf  = "",
+    clienteEmail    = "",
+    clienteEndereco = "",
+    clienteTelefone = "",
     servicoNome = "",
     descricaoObjeto = "",
     itensEquipamentos = [],
@@ -67,6 +71,7 @@ export async function gerarPdfOrcamento(orcamento) {
     observacoes      = "",
     exibirDadosFornecedor = false,
     fornecedor       = null,
+    exibirDadosBancarios = true,
     servicoCategoria = "",
     direcionadoA     = "",
     aoCuidadoDe      = "",
@@ -85,46 +90,83 @@ export async function gerarPdfOrcamento(orcamento) {
 
   // ── Cabeçalho ─────────────────────────────────────────────────────────────
   doc.setFillColor(...BRAND);
-  doc.rect(0, 0, 210, 30, "F");
+  doc.rect(0, 0, 210, 32, "F");
 
-  // Logo (se carregou)
+  // Logo alinhado verticalmente com o texto
   if (logoImg) {
-    doc.addImage(logoImg, "PNG", 14, 6, 18, 18);
+    doc.addImage(logoImg, "PNG", 14, 8, 14, 14);
   }
 
-  // Texto do cabeçalho (deslocado à direita quando há logo)
-  const txtX = logoImg ? 36 : 14;
+  // Texto do cabeçalho — verticalmente centralizado com a logo
+  const txtX = logoImg ? 31 : 14;
 
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("AVM AR CAMPINAS", txtX, 12);
+  doc.setFontSize(12);
+  doc.text("AVM AR CAMPINAS", txtX, 13);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text("AR CONDICIONADO E ELÉTRICA", txtX, 17.5);
+  doc.setFontSize(7.5);
+  doc.text("AR CONDICIONADO E ELÉTRICA", txtX, 18);
+  doc.setFontSize(6.5);
   doc.text(
     "André Gonçalves Santos · CNPJ 29.969.275/0001-10 · CFT 313.142.228-99",
-    txtX, 22
+    txtX, 22.5
   );
-  doc.text("Rua Uruguai, 38 – NV Europa – Campinas/SP  ·  (19) 4141-7244", txtX, 26.5);
+  doc.text("Rua Uruguai, 38 – NV Europa – Campinas/SP  ·  (19) 4141-7244 · (19) 99280-7850", txtX, 27);
 
-  // Número da proposta (canto direito)
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.text("PROPOSTA", 196, 12, { align: "right" });
-  doc.setFontSize(17);
-  doc.text(numero, 196, 20.5, { align: "right" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.text(dataEmissao, 196, 27, { align: "right" });
+  // Número da proposta + instituição (canto direito)
+  const instituicaoHeader = direcionadoA || aoCuidadoDe;
+  if (instituicaoHeader) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(6.5);
+    doc.setTextColor(255, 210, 80);
+    doc.text(`AOS CUIDADOS DE ${instituicaoHeader.toUpperCase()}`, 196, 8, { align: "right" });
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(7.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text("PROPOSTA", 196, 14.5, { align: "right" });
+    doc.setFontSize(15);
+    doc.text(numero, 196, 22, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.text(dataEmissao, 196, 28.5, { align: "right" });
+  } else {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.text("PROPOSTA", 196, 12, { align: "right" });
+    doc.setFontSize(17);
+    doc.text(numero, 196, 20.5, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.text(dataEmissao, 196, 27, { align: "right" });
+  }
 
   // ── Faixa de informações principais ────────────────────────────────────────
+  const clienteDoc = [
+    clienteCnpj && `CNPJ ${clienteCnpj}`,
+    clienteCpf  && `CPF ${clienteCpf}`,
+  ].filter(Boolean).join("  ·  ") || "—";
+
+  const contatoLinha = [
+    clienteEmail    && `Email: ${clienteEmail}`,
+    clienteTelefone && `Tel.: ${clienteTelefone}`,
+    clienteEndereco && clienteEndereco,
+  ].filter(Boolean).join("   |   ");
+
+  const infoBody = [
+    [processo || "—", clienteNome, clienteDoc, garantia],
+    ...(contatoLinha ? [[{
+      content: contatoLinha, colSpan: 4,
+      styles: { fontStyle: "normal", textColor: [70, 100, 150], fontSize: 7, cellPadding: { top: 2, right: 3, bottom: 3, left: 3 } }
+    }]] : []),
+  ];
+
   autoTable(doc, {
-    startY: 34,
+    startY: 36,
     margin: { left: 14, right: 14 },
-    head: [["PROCESSO", "ATENDIDO", "CNPJ CONTRATANTE", "GARANTIA"]],
-    body: [[processo || "—", clienteNome, clienteCnpj || "—", garantia]],
+    head: [["PROCESSO", "CONTRATANTE", "CNPJ / CPF", "GARANTIA"]],
+    body: infoBody,
     headStyles: {
       fillColor: [232, 240, 248], textColor: BRAND,
       fontStyle: "bold", fontSize: 7,
@@ -214,7 +256,7 @@ export async function gerarPdfOrcamento(orcamento) {
       head: [["MODELO / DESCRIÇÃO", "VALOR"]],
       body: [[
         opcaoEquipamentoSelecionada.nome || "—",
-        equipApenasRef ? "Ref." : fmt(opcaoEquipamentoSelecionada.valorUnit || 0),
+        fmt(opcaoEquipamentoSelecionada.valorUnit || 0) + (equipApenasRef ? " (ref.)" : ""),
       ]],
       styles: { fontSize: 8, cellPadding: 2.5, textColor: DARK },
       headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 8 },
@@ -243,10 +285,10 @@ export async function gerarPdfOrcamento(orcamento) {
           String(i + 1),
           item.descricao || item.desc || "—",
           String(item.qtd ?? 1),
-          equipApenasRef ? "Ref." : fmt(item.vlUnit),
-          equipApenasRef ? "Ref." : fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
+          fmt(item.vlUnit),
+          fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
         ]),
-        ["", equipApenasRef ? "Itens listados para referência" : "Subtotal equipamentos",
+        ["", equipApenasRef ? "* Valores para referência — não incluídos no total" : "Subtotal equipamentos",
          "", "", equipApenasRef ? "—" : fmt(calculo.totalEquipamentos ?? 0)],
       ],
       styles: { fontSize: 7.5, cellPadding: 2.5, textColor: DARK },
@@ -347,25 +389,35 @@ export async function gerarPdfOrcamento(orcamento) {
     curY += 11;
   }
 
-  curY += 2;
-  doc.setFillColor(...GREEN);
-  doc.rect(14, curY, 182, 15, "F");
+  curY += 3;
+  doc.setDrawColor(...GREEN);
+  doc.setLineWidth(0.5);
+  doc.line(14, curY, 196, curY);
+  doc.setFillColor(238, 251, 242);
+  doc.rect(14, curY, 182, 12, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(255, 255, 255);
-  doc.text("TOTAL GERAL", 19, curY + 10);
-  doc.setFontSize(14);
-  doc.text(fmt(calculo.totalGeral ?? 0), 193, curY + 10.5, { align: "right" });
-  curY += 25;
+  doc.setFontSize(9.5);
+  doc.setTextColor(...GREEN);
+  doc.text("TOTAL GERAL", 19, curY + 8.5);
+  doc.setFontSize(13);
+  doc.text(fmt(calculo.totalGeral ?? 0), 193, curY + 9, { align: "right" });
+  curY += 22;
 
   // ── Página 2 — Condições ───────────────────────────────────────────────────
   doc.addPage();
   curY = 20;
 
+  // Detecção de categoria — a ordem importa: corretiva antes de manutenção geral
   const ehFornecimento = servicoCategoria === "fornecimento";
-  const ehManutencao   = !ehFornecimento && (servicoCategoria
-    ? servicoCategoria !== "instalacao"
-    : /manut|correti|preventi|higien|pmoc/i.test(servicoNome));
+  const ehCorretiva    = !ehFornecimento && (
+    servicoCategoria === "corretiva" ||
+    /correti/i.test(servicoCategoria || servicoNome)
+  );
+  const ehManutencao   = !ehFornecimento && !ehCorretiva && (
+    servicoCategoria
+      ? !["instalacao"].includes(servicoCategoria)
+      : /manut|preventi|higien|pmoc/i.test(servicoNome)
+  );
 
   doc.setFillColor(...BRAND);
   doc.rect(14, curY - 3, 182, 12, "F");
@@ -390,6 +442,7 @@ export async function gerarPdfOrcamento(orcamento) {
      "A CONTRATADA responde por danos causados por seus colaboradores, com direito a contraditório e ampla defesa."],
   ];
 
+  // Condições específicas para manutenção preventiva / geral
   const condicoesManutencao = [
     ["Execução",
      "Serviço executado por técnico qualificado, seguindo NBR 16280 e demais normas ABNT/NRs. Uso de EPI completo e equipamentos calibrados. Equipe uniformizada com crachá DSTr/Unicamp."],
@@ -401,6 +454,24 @@ export async function gerarPdfOrcamento(orcamento) {
      `Até ${prazoExecucao} corridos após emissão da AF ou aprovação do orçamento.`],
     ["Responsab.",
      "A CONTRATADA responde por danos causados por seus colaboradores durante a execução, com direito a contraditório e ampla defesa."],
+  ];
+
+  // Condições específicas para manutenção corretiva
+  const condicoesCorretiva = [
+    ["Diagnóstico",
+     "Serviço precedido de visita técnica para identificação da falha. O custo da visita de diagnóstico é cobrado independentemente da aprovação do reparo."],
+    ["Peças",
+     "Peças e componentes de reposição não estão inclusos neste orçamento e serão apresentados para aprovação formal do contratante antes da aquisição e execução."],
+    ["Mão de Obra",
+     "A mão de obra de diagnóstico e reparo é cobrada mesmo que a intervenção não resulte em solução definitiva, em razão de falha de terceiros, desgaste irrecuperável ou fatores externos ao equipamento."],
+    ["Inclusos",
+     "Materiais de consumo (fluido refrigerante, vedantes, produtos de limpeza) e ferramental especializado. Deslocamento incluído dentro do município de Campinas/SP."],
+    ["Garantia",
+     `${garantia}, contados da data de execução do reparo. A garantia não cobre dano elétrico externo, mau uso, queda de tensão ou intervenção de terceiros após o serviço.`],
+    ["Prazo",
+     `Execução em até ${prazoExecucao} corridos após emissão da AF ou aprovação formal do orçamento.`],
+    ["Responsab.",
+     "A CONTRATADA responde por danos causados diretamente por seus colaboradores durante a execução, com direito a contraditório e ampla defesa."],
   ];
 
   const condicoesFornecimento = [
@@ -418,9 +489,11 @@ export async function gerarPdfOrcamento(orcamento) {
 
   const condicoes = ehFornecimento
     ? condicoesFornecimento
-    : ehManutencao
-      ? condicoesManutencao
-      : condicoesInstalacao;
+    : ehCorretiva
+      ? condicoesCorretiva
+      : ehManutencao
+        ? condicoesManutencao
+        : condicoesInstalacao;
 
   if (observacoes) {
     condicoes.push(["Observações", observacoes]);
@@ -490,65 +563,99 @@ export async function gerarPdfOrcamento(orcamento) {
   curY += 26;
 
   // ── Dados Bancários ────────────────────────────────────────────────────────
-  if (curY > 240) { doc.addPage(); curY = 20; }
+  // exibirDadosBancarios controla apenas os dados da AVM (contratada).
+  // Dados do fornecedor sempre aparecem quando selecionado.
+  const temFornecedor = exibirDadosFornecedor && fornecedorNome;
+  const mostrarSecaoBancaria = exibirDadosBancarios || temFornecedor;
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...BRAND);
-  doc.text("DADOS BANCÁRIOS – CONTRATADA", 14, curY);
-  curY += 2;
-  doc.setDrawColor(...BRAND);
-  doc.line(14, curY, 196, curY);
-  curY += 6;
+  if (mostrarSecaoBancaria) {
+    if (curY > 240) { doc.addPage(); curY = 20; }
 
-  if (exibirDadosFornecedor && fornecedorNome) {
-    autoTable(doc, {
-      startY: curY,
-      margin: { left: 14, right: 14 },
-      body: [
-        ["AVM AR Campinas – André Gonçalves Santos",
-         `Fornecedor Parceiro – ${fornecedorNome}`],
-        ["Banco do Brasil · Ag. 4038-X · CC 25851-2",
-         fornecedorNome],
-        ["Favorecido: André Gonçalves Santos",
-         fornecedorCnpj ? `CNPJ ${fornecedorCnpj}` : "—"],
-        ["CNPJ 29.969.275/0001-10",
-         fornecedorBanco || "—"],
-      ],
-      styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
-      columnStyles: {
-        0: { cellWidth: "auto", fontStyle: "normal" },
-        1: { cellWidth: "auto" },
-      },
-      didParseCell(data) {
-        if (data.row.index === 0) {
-          data.cell.styles.fontStyle = "bold";
-          data.cell.styles.textColor = DARK;
-        }
-      },
-    });
+    const tituloSecao = exibirDadosBancarios
+      ? "DADOS BANCÁRIOS – CONTRATADA"
+      : "DADOS BANCÁRIOS – FORNECEDOR";
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...BRAND);
+    doc.text(tituloSecao, 14, curY);
+    curY += 2;
+    doc.setDrawColor(...BRAND);
+    doc.line(14, curY, 196, curY);
+    curY += 6;
+
+    if (exibirDadosBancarios && temFornecedor) {
+      // Mostra AVM + Fornecedor lado a lado
+      autoTable(doc, {
+        startY: curY,
+        margin: { left: 14, right: 14 },
+        body: [
+          ["AVM AR Campinas – André Gonçalves Santos",
+           `Fornecedor Parceiro – ${fornecedorNome}`],
+          ["Banco do Brasil · Ag. 4038-X · CC 25851-2",
+           fornecedorNome],
+          ["Favorecido: André Gonçalves Santos",
+           fornecedorCnpj ? `CNPJ ${fornecedorCnpj}` : "—"],
+          ["CNPJ 29.969.275/0001-10",
+           fornecedorBanco || "—"],
+        ],
+        styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
+        columnStyles: {
+          0: { cellWidth: "auto" },
+          1: { cellWidth: "auto" },
+        },
+        didParseCell(data) {
+          if (data.row.index === 0) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.textColor = DARK;
+          }
+        },
+      });
+    } else if (exibirDadosBancarios) {
+      // Mostra apenas AVM (sem fornecedor)
+      autoTable(doc, {
+        startY: curY,
+        margin: { left: 14, right: 14 },
+        body: [
+          ["AVM AR Campinas – André Gonçalves Santos"],
+          ["Banco do Brasil · Ag. 4038-X · CC 25851-2"],
+          ["Favorecido: André Gonçalves Santos"],
+          ["CNPJ 29.969.275/0001-10"],
+        ],
+        styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
+        columnStyles: { 0: { cellWidth: "auto" } },
+        didParseCell(data) {
+          if (data.row.index === 0) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.textColor = DARK;
+          }
+        },
+      });
+    } else {
+      // Mostra apenas o fornecedor (sem AVM)
+      autoTable(doc, {
+        startY: curY,
+        margin: { left: 14, right: 14 },
+        body: [
+          [fornecedorNome],
+          ...(fornecedorCnpj  ? [[`CNPJ ${fornecedorCnpj}`]]  : []),
+          ...(fornecedorBanco ? [[fornecedorBanco]]             : []),
+        ],
+        styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
+        columnStyles: { 0: { cellWidth: "auto" } },
+        didParseCell(data) {
+          if (data.row.index === 0) {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.textColor = DARK;
+          }
+        },
+      });
+    }
+
+    curY = doc.lastAutoTable.finalY + 16;
   } else {
-    autoTable(doc, {
-      startY: curY,
-      margin: { left: 14, right: 14 },
-      body: [
-        ["AVM AR Campinas – André Gonçalves Santos"],
-        ["Banco do Brasil · Ag. 4038-X · CC 25851-2"],
-        ["Favorecido: André Gonçalves Santos"],
-        ["CNPJ 29.969.275/0001-10"],
-      ],
-      styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
-      columnStyles: { 0: { cellWidth: "auto" } },
-      didParseCell(data) {
-        if (data.row.index === 0) {
-          data.cell.styles.fontStyle = "bold";
-          data.cell.styles.textColor = DARK;
-        }
-      },
-    });
+    curY += 8;
   }
-
-  curY = doc.lastAutoTable.finalY + 16;
 
   // ── Assinaturas ────────────────────────────────────────────────────────────
   if (curY > 250) { doc.addPage(); curY = 20; }
