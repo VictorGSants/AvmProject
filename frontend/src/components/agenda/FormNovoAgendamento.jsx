@@ -21,7 +21,7 @@ const ESTADO_INICIAL = {
   clienteNome: "",
   endereco: "",
   descricao: "",
-  veiculo: "",
+  veiculos: [],
 };
 
 export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnicos, contratos = [] }) {
@@ -40,6 +40,15 @@ export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnic
       ...prev,
       contratoId,
       clienteNome: contrato ? contrato.nome : "",
+    }));
+  }
+
+  function toggleVeiculo(v) {
+    setForm(prev => ({
+      ...prev,
+      veiculos: prev.veiculos.includes(v)
+        ? prev.veiculos.filter(x => x !== v)
+        : [...prev.veiculos, v],
     }));
   }
 
@@ -81,7 +90,7 @@ export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnic
         clienteNome: form.clienteNome,
         endereco: form.endereco,
         descricao: form.descricao,
-        veiculo: form.veiculo,
+        veiculos: form.veiculos,
       });
       setForm(ESTADO_INICIAL);
       onFechar();
@@ -208,17 +217,24 @@ export default function FormNovoAgendamento({ aberto, onFechar, onSalvar, tecnic
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
           </div>
 
-          {/* Veículo */}
+          {/* Veículos — seleção múltipla */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Veículo</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Veículo(s)
+              {form.veiculos.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-gray-400">
+                  {form.veiculos.join(", ")}
+                </span>
+              )}
+            </label>
             <div className="grid grid-cols-2 gap-2">
               {VEICULOS.map(v => (
                 <button
                   key={v}
                   type="button"
-                  onClick={() => atualizar("veiculo", form.veiculo === v ? "" : v)}
+                  onClick={() => toggleVeiculo(v)}
                   className={`py-2 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
-                    form.veiculo === v
+                    form.veiculos.includes(v)
                       ? "bg-[#1a1a2e] text-white border-[#1a1a2e]"
                       : "bg-white text-gray-600 border-gray-200 hover:border-[#7b8cd4]"
                   }`}

@@ -90,7 +90,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
       clienteNome: evento.clienteNome ?? "",
       endereco: evento.endereco ?? "",
       descricao: evento.descricao ?? "",
-      veiculo: evento.veiculo ?? "",
+      veiculos: evento.veiculos ?? (evento.veiculo ? [evento.veiculo] : []),
     });
     setErrosEdit({});
     setEtapa("edicao");
@@ -107,6 +107,15 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
       ...prev,
       contratoId,
       clienteNome: contrato ? contrato.nome : prev.clienteNome,
+    }));
+  }
+
+  function toggleVeiculoEdit(v) {
+    setEditForm(prev => ({
+      ...prev,
+      veiculos: prev.veiculos.includes(v)
+        ? prev.veiculos.filter(x => x !== v)
+        : [...prev.veiculos, v],
     }));
   }
 
@@ -147,7 +156,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
         clienteNome: editForm.clienteNome,
         endereco: editForm.endereco,
         descricao: editForm.descricao,
-        veiculo: editForm.veiculo,
+        veiculos: editForm.veiculos,
       });
       setEtapa("detalhes");
     } catch (err) {
@@ -285,7 +294,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               </span>
               {eGestor && (
                 <div className="flex items-center gap-3">
-                  {evento.status === "agendado" && (
+                  {(evento.status === "agendado" || evento.status === "em_andamento") && (
                     <button onClick={iniciarEdicao} disabled={salvando}
                       className="flex items-center gap-1 text-xs text-[#7b8cd4] hover:text-[#6677be] transition-colors disabled:opacity-50">
                       <Pencil size={13} /> Editar
@@ -329,9 +338,11 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               <p className="text-sm text-gray-700">{nomeTecnicos}</p>
             </InfoLinha>
 
-            {evento.veiculo && (
+            {(evento.veiculos?.length > 0 || evento.veiculo) && (
               <InfoLinha Icone={Car} label="Veículo">
-                <p className="text-sm text-gray-700">{evento.veiculo}</p>
+                <p className="text-sm text-gray-700">
+                  {evento.veiculos?.length > 0 ? evento.veiculos.join(", ") : evento.veiculo}
+                </p>
               </InfoLinha>
             )}
 
@@ -532,15 +543,22 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
             </div>
 
-            {/* Veículo */}
+            {/* Veículos — seleção múltipla */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Veículo</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Veículo(s)
+                {editForm.veiculos.length > 0 && (
+                  <span className="ml-2 text-xs font-normal text-gray-400">
+                    {editForm.veiculos.join(", ")}
+                  </span>
+                )}
+              </label>
               <div className="grid grid-cols-2 gap-2">
                 {VEICULOS.map(v => (
                   <button key={v} type="button"
-                    onClick={() => atualizarEdit("veiculo", editForm.veiculo === v ? "" : v)}
+                    onClick={() => toggleVeiculoEdit(v)}
                     className={`py-2 rounded-xl text-sm font-semibold border transition-all active:scale-95 ${
-                      editForm.veiculo === v
+                      editForm.veiculos.includes(v)
                         ? "bg-[#1a1a2e] text-white border-[#1a1a2e]"
                         : "bg-white text-gray-600 border-gray-200 hover:border-[#7b8cd4]"
                     }`}
