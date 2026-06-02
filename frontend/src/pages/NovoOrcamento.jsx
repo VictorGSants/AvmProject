@@ -46,6 +46,7 @@ export default function NovoOrcamento() {
   const [direcionadoA, setDirecionadoA]                 = useState("");
   const [aoCuidadoDe, setAoCuidadoDe]           = useState("");
   const [responsavel, setResponsavel]           = useState("");
+  const [condicoesServico, setCondicoesServico] = useState([]);
 
   // Carrega orçamento existente ao editar
   useEffect(() => {
@@ -81,6 +82,16 @@ export default function NovoOrcamento() {
         setDirecionadoA(orc.direcionadoA   || "");
         setAoCuidadoDe(orc.aoCuidadoDe    || "");
         setResponsavel(orc.responsavel     || "");
+        setCondicoesServico(
+          orc.condicoesServico?.length
+            ? orc.condicoesServico
+            : getCondicoesDefault(
+                orc.servicoCategoria || "",
+                orc.servicoNome      || "",
+                orc.garantia         || "12 meses peças / 36 meses compressor",
+                orc.prazoExecucao    || "30 dias"
+              )
+        );
         setStep(2);
       })
       .catch(() => toast.error("Erro ao carregar orçamento"))
@@ -107,11 +118,14 @@ export default function NovoOrcamento() {
     setDescricaoObjeto(s.descricao || "");
     setServicoCategoria(s.categoria || "");
     const ehManut = /manut|correti|preventi/i.test(s.categoria || s.nome || "");
-    setGarantia(s.garantia || (ehManut ? "90 dias" : "12 meses peças / 36 meses compressor"));
+    const g = s.garantia || (ehManut ? "90 dias" : "12 meses peças / 36 meses compressor");
+    const p = "30 dias";
+    setGarantia(g);
     setPagamento("15 DDL");
     setValidade("30 dias");
-    setPrazoExecucao("30 dias");
+    setPrazoExecucao(p);
     setPrecoFinal("");
+    setCondicoesServico(getCondicoesDefault(s.categoria || "", s.nome || "", g, p));
     setStep(2);
   }
 
@@ -152,6 +166,7 @@ export default function NovoOrcamento() {
         direcionadoA: direcionadoA.trim() || "",
         aoCuidadoDe:  aoCuidadoDe.trim()  || "",
         responsavel:  responsavel.trim()   || "",
+        condicoesServico,
         status: rascunho ? "rascunho" : "enviado",
       };
 
@@ -249,6 +264,8 @@ export default function NovoOrcamento() {
             aoCuidadoDe={aoCuidadoDe}   onAoCuidadoDeChange={setAoCuidadoDe}
             responsavel={responsavel}   onResponsavelChange={setResponsavel}
             clienteId={cliente?.id}
+            condicoesServico={condicoesServico} setCondicoesServico={setCondicoesServico}
+            servicoCategoria={servicoCategoria} servicoNome={servico?.nome || ""}
             onVoltar={() => setStep(2)}
             onRascunho={() => handleSalvar(true)}
             onFinalizar={() => handleSalvar(false)}
@@ -427,6 +444,52 @@ function StepServico({ eId, servicoSelecionado, onSelect, onVoltar }) {
       <button onClick={onVoltar} className="text-sm text-gray-500 font-medium">← Voltar</button>
     </div>
   );
+}
+
+// ── Condições de serviço padrão por categoria ─────────────────────────────
+// Retorna array de { titulo, texto } com as condições padrão para o PDF
+function getCondicoesDefault(categoria, nomeServico, garantia, prazo) {
+  const ehFornecimento = categoria === "fornecimento";
+  const ehCorretiva = !ehFornecimento && (
+    categoria === "corretiva" || /correti/i.test(categoria || nomeServico)
+  );
+  const ehManutencao = !ehFornecimento && !ehCorretiva && (
+    categoria
+      ? !["instalacao"].includes(categoria)
+      : /manut|preventi|higien|pmoc/i.test(nomeServico)
+  );
+
+  if (ehFornecimento) return [
+    { titulo: "Fornecimento", texto: "Equipamentos novos, sem uso, com Certificado INMETRO, Selo Procel A e Manual Técnico. Caixa íntegra no transporte. Substituição em até 15 dias se recusado pelo Fiscal." },
+    { titulo: "Entrega",      texto: `Entrega no local indicado pelo contratante em até ${prazo} corridos após emissão da AF ou assinatura do contrato. Agendamento prévio com o responsável técnico.` },
+    { titulo: "Nota Fiscal",  texto: "Emissão de NF-e no ato do faturamento, com discriminação completa dos equipamentos fornecidos." },
+    { titulo: "Garantia",     texto: `${garantia}, contados da data de recebimento. Atendimento em garantia em até 10 dias corridos após abertura de chamado.` },
+    { titulo: "Responsab.",   texto: "A CONTRATADA responde pela integridade dos equipamentos até a entrega formal no local designado, com direito a contraditório e ampla defesa." },
+  ];
+  if (ehCorretiva) return [
+    { titulo: "Diagnóstico",  texto: "Serviço precedido de visita técnica para identificação da falha. O custo da visita de diagnóstico é cobrado independentemente da aprovação do reparo." },
+    { titulo: "Peças",        texto: "Peças e componentes de reposição não estão inclusos neste orçamento e serão apresentados para aprovação formal do contratante antes da aquisição e execução." },
+    { titulo: "Mão de Obra",  texto: "A mão de obra de diagnóstico e reparo é cobrada mesmo que a intervenção não resulte em solução definitiva, em razão de falha de terceiros, desgaste irrecuperável ou fatores externos ao equipamento." },
+    { titulo: "Inclusos",     texto: "Materiais de consumo (fluido refrigerante, vedantes, produtos de limpeza) e ferramental especializado. Deslocamento incluído dentro do município de Campinas/SP." },
+    { titulo: "Garantia",     texto: `${garantia}, contados da data de execução do reparo. A garantia não cobre dano elétrico externo, mau uso, queda de tensão ou intervenção de terceiros após o serviço.` },
+    { titulo: "Prazo",        texto: `Execução em até ${prazo} corridos após emissão da AF ou aprovação formal do orçamento.` },
+    { titulo: "Responsab.",   texto: "A CONTRATADA responde por danos causados diretamente por seus colaboradores durante a execução, com direito a contraditório e ampla defesa." },
+  ];
+  if (ehManutencao) return [
+    { titulo: "Execução",     texto: "Serviço executado por técnico qualificado, seguindo NBR 16280 e demais normas ABNT/NRs. Uso de EPI completo e equipamentos calibrados. Equipe uniformizada com crachá DSTr/Unicamp." },
+    { titulo: "Inclusos",     texto: "Materiais de consumo inclusos: produto de limpeza, filtros, vedantes e materiais de acabamento. Peças de reposição cobradas à parte, mediante aprovação prévia do contratante." },
+    { titulo: "Garantia",     texto: `${garantia}, contados da data de execução do serviço. Atendimento em garantia em até 5 dias úteis após abertura de chamado.` },
+    { titulo: "Prazo",        texto: `Até ${prazo} corridos após emissão da AF ou aprovação do orçamento.` },
+    { titulo: "Responsab.",   texto: "A CONTRATADA responde por danos causados por seus colaboradores durante a execução, com direito a contraditório e ampla defesa." },
+  ];
+  return [
+    { titulo: "Equipamento",  texto: "Novo, sem uso, com Certificado INMETRO, Selo Procel A e Manual Técnico. Caixa íntegra no transporte. Substituição em até 15 dias se recusado pelo Fiscal." },
+    { titulo: "Instalação",   texto: "Realizada conforme manual do fabricante e normas ABNT/NRs, com visita técnica prévia e APR/PT quando aplicável. Equipe uniformizada, com crachá DSTr/Unicamp." },
+    { titulo: "Inclusos",     texto: "Suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, bomba de condensado, canaletas/eletrocalhas, andaimes, sinalização e descarte de resíduos." },
+    { titulo: "Garantia",     texto: `${garantia}, contados da data de recebimento. Atendimento em garantia em até 10 dias corridos.` },
+    { titulo: "Prazo",        texto: `Até ${prazo} corridos após emissão da AF ou assinatura do contrato.` },
+    { titulo: "Responsab.",   texto: "A CONTRATADA responde por danos causados por seus colaboradores, com direito a contraditório e ampla defesa." },
+  ];
 }
 
 // ── Helpers de itens ───────────────────────────────────────────────────────
@@ -886,6 +949,8 @@ function StepRevisao({
   aoCuidadoDe, onAoCuidadoDeChange,
   responsavel, onResponsavelChange,
   clienteId,
+  condicoesServico, setCondicoesServico,
+  servicoCategoria, servicoNome,
   onVoltar, onRascunho, onFinalizar, salvando, modoEditar,
 }) {
   const vlOpcao       = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
@@ -950,6 +1015,56 @@ function StepRevisao({
         <textarea rows={4} value={descricaoObjeto} onChange={(e) => onDescChange(e.target.value)}
           placeholder="Descreva o objeto da proposta..."
           className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] resize-none" />
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            Condições do Serviço (2ª página do PDF)
+          </p>
+          <button
+            onClick={() => setCondicoesServico(getCondicoesDefault(servicoCategoria, servicoNome, garantia, prazoExecucao))}
+            className="text-xs text-[#1a5ea8] font-semibold hover:underline"
+          >
+            Restaurar padrão
+          </button>
+        </div>
+        <div className="space-y-3">
+          {condicoesServico.map((c, idx) => (
+            <div key={idx} className="flex gap-2 items-start">
+              <input
+                type="text"
+                value={c.titulo}
+                onChange={(e) => setCondicoesServico(prev =>
+                  prev.map((item, i) => i === idx ? { ...item, titulo: e.target.value } : item)
+                )}
+                className="w-28 flex-shrink-0 px-2 py-1.5 text-xs font-bold bg-[#1a5ea8] text-white rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                placeholder="Título"
+              />
+              <textarea
+                rows={2}
+                value={c.texto}
+                onChange={(e) => setCondicoesServico(prev =>
+                  prev.map((item, i) => i === idx ? { ...item, texto: e.target.value } : item)
+                )}
+                className="flex-1 px-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] resize-none"
+                placeholder="Texto da condição..."
+              />
+              <button
+                onClick={() => setCondicoesServico(prev => prev.filter((_, i) => i !== idx))}
+                className="flex-shrink-0 p-1.5 text-gray-300 hover:text-red-400 transition-colors mt-0.5"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => setCondicoesServico(prev => [...prev, { titulo: "Nova", texto: "" }])}
+          className="flex items-center gap-1.5 text-xs text-[#1a5ea8] font-semibold mt-3"
+        >
+          <Plus size={13} /> Adicionar condição
+        </button>
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">

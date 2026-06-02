@@ -76,6 +76,7 @@ export async function gerarPdfOrcamento(orcamento) {
     direcionadoA     = "",
     aoCuidadoDe      = "",
     responsavel      = "",
+    condicoesServico = null,
   } = orcamento;
 
   const fornecedorNome  = fornecedor?.nome  || "";
@@ -487,17 +488,21 @@ export async function gerarPdfOrcamento(orcamento) {
      "A CONTRATADA responde pela integridade dos equipamentos até a entrega formal no local designado, com direito a contraditório e ampla defesa."],
   ];
 
-  const condicoes = ehFornecimento
-    ? condicoesFornecimento
-    : ehCorretiva
-      ? condicoesCorretiva
-      : ehManutencao
-        ? condicoesManutencao
-        : condicoesInstalacao;
-
-  if (observacoes) {
-    condicoes.push(["Observações", observacoes]);
-  }
+  // Se o orçamento tem condições personalizadas (editadas pelo usuário), usa elas.
+  // Caso contrário, usa as condições padrão da categoria + observações ao final.
+  const condicoes = (condicoesServico && condicoesServico.length > 0)
+    ? condicoesServico.map(c => [c.titulo, c.texto])
+    : (() => {
+        const padrao = ehFornecimento
+          ? condicoesFornecimento
+          : ehCorretiva
+            ? condicoesCorretiva
+            : ehManutencao
+              ? condicoesManutencao
+              : condicoesInstalacao;
+        if (observacoes) padrao.push(["Observações", observacoes]);
+        return padrao;
+      })();
 
   autoTable(doc, {
     startY: curY,
