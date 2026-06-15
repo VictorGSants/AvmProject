@@ -284,7 +284,7 @@ def processar_dados_pmoc(empresa_id, contrato_id):
 
         logs = contrato_ref.collection("equipamentos").document(eq_id).collection("manutencoes").order_by("data", direction=firestore.Query.DESCENDING).stream()
         lista_historico = []
-        data_ultima_manutencao = 0
+        meses_com_manutencao = set()
 
         for l in logs:
             d = l.to_dict()
@@ -301,8 +301,7 @@ def processar_dados_pmoc(empresa_id, contrato_id):
 
             if data_obj:
                 ref = data_obj.year * 100 + data_obj.month
-                if ref > data_ultima_manutencao:
-                    data_ultima_manutencao = ref
+                meses_com_manutencao.add(ref)
                 lista_historico.append({
                     "data_formatada": data_obj.strftime("%d/%m/%Y"),
                     "descricao": d.get("descricao", "Manutenção Preventiva"),
@@ -324,10 +323,10 @@ def processar_dados_pmoc(empresa_id, contrato_id):
                     ano_da_coluna = ano_inicio_ciclo + 1
 
                 data_coluna_ref = ano_da_coluna * 100 + num_mes_coluna
-                is_ate_ultima_manutencao = data_ultima_manutencao > 0 and data_coluna_ref <= data_ultima_manutencao
+                foi_feito_no_mes = data_coluna_ref in meses_com_manutencao
                 deve_pelo_plano = calcular_marcao_automatica(freq, i)
 
-                if is_ate_ultima_manutencao and deve_pelo_plano:
+                if foi_feito_no_mes and deve_pelo_plano:
                     task_info["meses_feitos"].append(mes_nome)
 
             tasks_processadas.append(task_info)
@@ -337,13 +336,25 @@ def processar_dados_pmoc(empresa_id, contrato_id):
 
     return contrato_data, equipamentos
 
+def resolver_caminho_capa(caminho):
+    if not caminho:
+        return None
+    # Tenta o caminho como está (absoluto ou relativo correto)
+    if os.path.exists(caminho):
+        return caminho
+    # Tenta só pelo nome do arquivo dentro de static/contratos_docs/
+    basename = os.path.basename(caminho)
+    fallback = os.path.join('static', 'contratos_docs', basename)
+    if os.path.exists(fallback):
+        return fallback
+    print(f"AVISO: Capa não encontrada. Tentou: '{caminho}' e '{fallback}'")
+    return None
+
 def mesclar_pdfs(miolo_pdf_bytes, caminho_capa_trt):
     merger = PdfMerger()
-    if caminho_capa_trt:
-        if os.path.exists(caminho_capa_trt):
-            merger.append(PdfReader(open(caminho_capa_trt, 'rb')))
-        else:
-            print(f"AVISO: Capa não encontrada em {caminho_capa_trt}")
+    caminho_resolvido = resolver_caminho_capa(caminho_capa_trt)
+    if caminho_resolvido:
+        merger.append(PdfReader(open(caminho_resolvido, 'rb')))
     merger.append(io.BytesIO(miolo_pdf_bytes))
     output = io.BytesIO()
     merger.write(output)

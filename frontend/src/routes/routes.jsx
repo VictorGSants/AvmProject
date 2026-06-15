@@ -27,6 +27,7 @@ import DetalheOrcamento from "../pages/DetalheOrcamento";
 import GerenciarBiblioteca from "../pages/GerenciarBiblioteca";
 import GerenciarClientes from "../pages/GerenciarClientes";
 import SeedBiblioteca from "../pages/Seedbiblioteca";
+import SeedEquipamentosPhotoUnicamp from "../pages/SeedEquipamentosPhotoUnicamp";
 import HistoricoRotinas from "../pages/HistoricoRotinas";
 
 export default function RouterApp() {
@@ -36,6 +37,7 @@ export default function RouterApp() {
         <Routes>
 
           <Route path="/gestor/:empresaId/seed" element={<ProtectedRoutes><SeedBiblioteca /></ProtectedRoutes>} />
+          <Route path="/gestor/:empresaId/:contratoId/seedEquip" element={<ProtectedRoutes><SeedEquipamentosPhotoUnicamp /></ProtectedRoutes>} />
           <Route path="/" element={<AuthLogin />} />
 
           {/* ===== GESTOR / PATRÃO ===== */}
