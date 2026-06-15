@@ -205,6 +205,40 @@ CHECKLISTS = {
         ("Inspeção elétrica", "S"),
         ("Troca do filtro HEPA", "A"),
     ],
+    "MÓDULO VENTILADOR": [
+        ("Verificar, limpar filtros", "M"),
+        ("Verificar e reapertar parafusos dos bornes elétricos", "M"),
+        ("Verificar, limpar carenagem", "M"),
+        ("Verificar, limpar bandeja de condensado e tubo de drenagem", "M"),
+        ("Verificar ruído, vibração ou aquecimento excessivo", "M"),
+        ("Aplicar agente bactericida", "M"),
+        ("Verificar temperatura de insuflamento", "M"),
+        ("Verificar temperatura de retorno", "M"),
+        ("Verificar se há vazamentos de gás", "M"),
+        ("Medir corrente em carga", "M"),
+        ("Medir voltagem", "M"),
+        ("Efetuar testes de funcionamento", "M"),
+        ("Verificar, limpar turbina", "S"),
+        ("Verificar, limpar serpentina", "S"),
+        ("Verificar isolamentos térmicos", "S"),
+    ],
+    "CONDENSADORA": [
+        ("Verificar ruído, vibração ou aquecimento excessivo", "M"),
+        ("Verificar, limpar serpentina da condensadora", "M"),
+        ("Verificar funcionamento do compressor", "M"),
+        ("Medir corrente em carga", "M"),
+        ("Medir voltagem", "M"),
+        ("Verificar se há vazamentos de gás", "M"),
+        ("Verificar estado dos disjuntores instalados", "M"),
+        ("Efetuar testes de funcionamento", "M"),
+        ("Lavar serpentina da unidade condensadora", "S"),
+        ("Verificar pressões de funcionamento (Alta)", "S"),
+        ("Verificar pressões de funcionamento (Baixa)", "S"),
+        ("Verificar e reapertar parafusos dos bornes elétricos", "S"),
+        ("Verificar isolamentos térmicos", "S"),
+        ("Checar óleo do compressor e vedações", "A"),
+        ("Verificação dos isolamentos elétricos", "A"),
+    ],
     "LAVADORA DA COIFA": [
         ("Verificação e troca da correia","M"),
         ("Verificar bombas, filtros e dreno", "M"),
@@ -216,13 +250,35 @@ CHECKLISTS = {
     ],
 }
 
+import unicodedata as _unicodedata
+
+def _normalizar(s):
+    return _unicodedata.normalize('NFD', s).encode('ascii', 'ignore').decode('ascii').upper()
+
+# Ordem importa: chaves mais específicas primeiro (ex: "MÓDULO VENTILADOR" antes de "VENTILADOR")
+_CHECKLIST_ORDEM = [
+    "MÓDULO VENTILADOR",
+    "CASSETE/K7",
+    "PISO TETO",
+    "SPLITAO",
+    "FANCOLETE",
+    "FANCOIL",
+    "CONDENSADORA",
+    "CAMARA FRIA",
+    "LAVADORA DA COIFA",
+    "EXAUSTOR",
+    "VENTILADOR",
+    "CHILLER",
+    "SPLIT",
+]
+
 def get_checklist_for_equipment(equip_dict):
-    tipo = str(equip_dict.get("tipo", "")).upper()
-    nome = str(equip_dict.get("nome", "")).upper()
-    texto_busca = f"{tipo} {nome}"
-    for key, tasks in CHECKLISTS.items():
-        if key in texto_busca:
-            return tasks
+    tipo = str(equip_dict.get("tipo", ""))
+    nome = str(equip_dict.get("nome", ""))
+    texto_busca = _normalizar(f"{tipo} {nome}")
+    for key in _CHECKLIST_ORDEM:
+        if _normalizar(key) in texto_busca:
+            return CHECKLISTS[key]
     return [("Inspeção Geral", "M")]
 
 def get_meses_nomes():
