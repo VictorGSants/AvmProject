@@ -13,7 +13,7 @@ export async function createAppointment(empresaId, dados) {
     clienteNome: dados.clienteNome || "",
     endereco: dados.endereco || "",
     descricao: dados.descricao || "",
-    veiculo: dados.veiculo || "",
+    veiculos: dados.veiculos || [],
     status: "agendado",
     assinatura: null,
     criadoEm: Timestamp.now(),
