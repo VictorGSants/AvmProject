@@ -6,6 +6,7 @@ import { listarClientes, criarCliente } from "../services/clienteService";
 import { listarBiblioteca } from "../services/bibliotecaService";
 import {
   criarOrcamento, atualizarOrcamento, obterOrcamento, fmtBRL,
+  timestampParaInputDate, inputDateParaTimestamp,
 } from "../services/orcamentoService";
 import { EMPRESAID } from "../config/empresa";
 import { listarFornecedores, criarFornecedor } from "../services/fornecedorService";
@@ -14,6 +15,23 @@ import { listarEntidades, criarEntidade, atualizarEntidade } from "../services/e
 import { toast } from "sonner";
 
 const STEPS = ["Cliente", "Serviço", "Itens", "Revisão"];
+
+// Orçamentos antigos guardavam equipamento em tabelas estruturadas
+// (itensEquipamentos / opcoesEquipamento). Ao editar um deles pela primeira
+// vez com o novo formulário, convertemos isso num texto inicial em vez de
+// simplesmente descartar a informação.
+function textoEquipamentoLegado(orc) {
+  const partes = [];
+  const opcoes = orc.opcoesEquipamento || [];
+  if (opcoes.length > 0) {
+    const op = opcoes[orc.opcaoEquipamentoIdx ?? 0];
+    if (op) partes.push(`${op.nome} — ${fmtBRL(op.valorUnit)}`);
+  }
+  (orc.itensEquipamentos || []).forEach((i) => {
+    partes.push(`${i.descricao || i.desc || ""} (${i.qtd ?? 1}x ${fmtBRL(i.vlUnit)})`);
+  });
+  return partes.join("\n");
+}
 
 export default function NovoOrcamento() {
   const navigate = useNavigate();
@@ -26,11 +44,9 @@ export default function NovoOrcamento() {
   const [carregando, setCarregando]           = useState(modoEditar);
   const [cliente, setCliente]                 = useState(null);
   const [servico, setServico]                 = useState(null);
-  const [itensEquip, setItensEquip]           = useState([]);
+  const [equipamentoTexto, setEquipamentoTexto] = useState("");
   const [itensInst, setItensInst]             = useState([]);
-  const [opcoesEquip, setOpcoesEquip]         = useState([]);
-  const [opcaoIdx, setOpcaoIdx]               = useState(0);
-  const [equipApenasRef, setEquipApenasRef]   = useState(false);
+  const [dataEmissao, setDataEmissao]         = useState(() => timestampParaInputDate(null));
   const [precoFinal, setPrecoFinal]           = useState("");
   const [observacoes, setObservacoes]         = useState("");
   const [processo, setProcesso]               = useState("");
@@ -62,11 +78,9 @@ export default function NovoOrcamento() {
           telefone: orc.clienteTelefone || "",
         });
         setServico({ id: orc.servicoId, nome: orc.servicoNome });
-        setItensEquip(orc.itensEquipamentos || []);
-        setItensInst(orc.itensInstalacao   || []);
-        setOpcoesEquip(orc.opcoesEquipamento || []);
-        setOpcaoIdx(orc.opcaoEquipamentoIdx ?? 0);
-        setEquipApenasRef(orc.equipApenasRef ?? false);
+        setEquipamentoTexto(orc.equipamentoTexto || textoEquipamentoLegado(orc));
+        setItensInst(orc.itensInstalacao || []);
+        setDataEmissao(timestampParaInputDate(orc.dataEmissao || orc.criadoEm));
         setPrecoFinal(orc.precoFinalDigitado ?? "");
         setProcesso(orc.processo       || "");
         setObservacoes(orc.observacoes || "");
@@ -100,16 +114,7 @@ export default function NovoOrcamento() {
 
   function onSelectServico(s) {
     setServico(s);
-    setItensEquip(
-      (s.materiais || []).map((m) => ({
-        descricao: m.nome || "",
-        qtd: m.qtd || 1,
-        vlUnit: m.valorUnit || 0,
-      }))
-    );
-    setOpcoesEquip(s.opcoesEquipamento || []);
-    setOpcaoIdx(0);
-    setEquipApenasRef(false);
+    setEquipamentoTexto((s.materiais || []).map((m) => m.nome).filter(Boolean).join(", "));
     setItensInst(
       s.maoDeObra > 0
         ? [{ descricao: s.nome, qtd: 1, vlUnit: s.maoDeObra }]
@@ -132,14 +137,8 @@ export default function NovoOrcamento() {
   async function handleSalvar(rascunho = false) {
     setSalvando(true);
     try {
-      // Apenas a opção selecionada entra no total — não a soma de todas
-      // Se equipApenasRef = true, equipamentos são só referência e não somam
-      const vlOpcao    = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
-      const totalEquip = equipApenasRef
-        ? 0
-        : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
       const totalInst  = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
-      const totalGeral = parseFloat(precoFinal) || (totalEquip + totalInst);
+      const totalGeral = parseFloat(precoFinal) || totalInst;
 
       const dados = {
         clienteId: cliente.id,           clienteNome: cliente.nome,
@@ -148,15 +147,18 @@ export default function NovoOrcamento() {
         clienteTelefone: cliente.telefone || "",
         servicoId: servico.id, servicoNome: servico.nome,
         descricaoObjeto,
-        itensEquipamentos: itensEquip,
+        equipamentoTexto,
         itensInstalacao: itensInst,
-        opcoesEquipamento: opcoesEquip,
-        opcaoEquipamentoIdx: opcaoIdx,
-        opcaoEquipamentoSelecionada: opcoesEquip.length > 0 ? (opcoesEquip[opcaoIdx] || null) : null,
-        equipApenasRef,
-        calculo: { totalEquipamentos: totalEquip, totalInstalacao: totalInst, totalGeral },
+        // Zera os campos estruturados antigos — a partir daqui o equipamento
+        // é sempre descrito em texto livre (equipamentoTexto).
+        itensEquipamentos: [],
+        opcoesEquipamento: [],
+        opcaoEquipamentoSelecionada: null,
+        equipApenasRef: false,
+        calculo: { totalInstalacao: totalInst, totalGeral },
         precoFinal: totalGeral,
         precoFinalDigitado: precoFinal,
+        dataEmissao: inputDateParaTimestamp(dataEmissao),
         processo, observacoes,
         garantia, pagamento, validade, prazoExecucao,
         servicoCategoria,
@@ -207,11 +209,11 @@ export default function NovoOrcamento() {
               <div className={`flex items-center gap-1.5 ${i <= step ? "opacity-100" : "opacity-40"}`}>
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                   i < step ? "bg-green-500 text-white"
-                  : i === step ? "bg-[#1a5ea8] text-white"
+                  : i === step ? "bg-[#14213D] text-white"
                   : "bg-gray-200 text-gray-400"}`}>
                   {i < step ? "✓" : i + 1}
                 </div>
-                <span className={`text-xs font-medium hidden sm:block ${i === step ? "text-[#1a5ea8]" : "text-gray-500"}`}>{s}</span>
+                <span className={`text-xs font-medium hidden sm:block ${i === step ? "text-[#14213D]" : "text-gray-500"}`}>{s}</span>
               </div>
               {i < STEPS.length - 1 && (
                 <div className={`w-8 sm:w-12 h-0.5 mx-1 ${i < step ? "bg-green-400" : "bg-gray-200"}`} />
@@ -234,11 +236,8 @@ export default function NovoOrcamento() {
         {step === 2 && (
           <StepItens
             eId={eId}
-            itensEquip={itensEquip} setItensEquip={setItensEquip}
+            equipamentoTexto={equipamentoTexto} setEquipamentoTexto={setEquipamentoTexto}
             itensInst={itensInst}   setItensInst={setItensInst}
-            opcoesEquip={opcoesEquip} setOpcoesEquip={setOpcoesEquip}
-            opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx}
-            equipApenasRef={equipApenasRef} setEquipApenasRef={setEquipApenasRef}
             servicoCategoria={servicoCategoria}
             onAvancar={() => setStep(3)}
             onVoltar={() => setStep(1)} />
@@ -247,12 +246,11 @@ export default function NovoOrcamento() {
           <StepRevisao
             eId={eId}
             cliente={cliente} servico={servico}
-            itensEquip={itensEquip} itensInst={itensInst}
-            opcoesEquip={opcoesEquip} opcaoIdx={opcaoIdx}
-            equipApenasRef={equipApenasRef}
+            equipamentoTexto={equipamentoTexto} itensInst={itensInst}
             precoFinal={precoFinal} processo={processo} observacoes={observacoes}
             descricaoObjeto={descricaoObjeto} garantia={garantia}
             pagamento={pagamento} validade={validade} prazoExecucao={prazoExecucao}
+            dataEmissao={dataEmissao} onDataEmissaoChange={setDataEmissao}
             onPrecoChange={setPrecoFinal} onProcessoChange={setProcesso} onObsChange={setObservacoes}
             onDescChange={setDescricaoObjeto} onGarantiaChange={setGarantia}
             onPagamentoChange={setPagamento} onValidadeChange={setValidade}
@@ -284,7 +282,7 @@ function InputField({ label, value, onChange, placeholder, type = "text" }) {
       <label className="text-xs font-semibold text-gray-600 block mb-1">{label}</label>
       <input type={type} placeholder={placeholder} value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
+        className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
     </div>
   );
 }
@@ -301,7 +299,7 @@ function ClienteField({ label, obrigatorio, ...props }) {
           : <span className="text-gray-400 font-normal">(opcional)</span>}
       </label>
       <input
-        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]"
+        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]"
         {...props}
       />
     </div>
@@ -356,14 +354,14 @@ function StepCliente({ eId, clienteSelecionado, onSelect }) {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input autoFocus type="text" placeholder="Buscar por nome, telefone, CPF ou CNPJ..."
           value={busca} onChange={(e) => setBusca(e.target.value)}
-          className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
+          className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
       </div>
 
       {loading ? <p className="text-sm text-gray-400 text-center py-6">Carregando...</p> : (
         <div className="space-y-2 mb-4 max-h-56 overflow-y-auto">
           {filtrados.map((c) => (
             <div key={c.id} onClick={() => onSelect(c)}
-              className={`p-3 rounded-xl border cursor-pointer transition-all ${clienteSelecionado?.id === c.id ? "border-[#1a5ea8] bg-blue-50" : "border-gray-100 bg-white hover:border-[#7b8cd4]"}`}>
+              className={`p-3 rounded-xl border cursor-pointer transition-all ${clienteSelecionado?.id === c.id ? "border-[#14213D] bg-amber-50" : "border-gray-100 bg-white hover:border-[#D97706]"}`}>
               <p className="text-sm font-semibold text-gray-800">{c.nome}</p>
               <div className="flex flex-wrap gap-x-3 mt-0.5">
                 {c.telefone && <span className="text-xs text-gray-400">{c.telefone}</span>}
@@ -377,7 +375,7 @@ function StepCliente({ eId, clienteSelecionado, onSelect }) {
       )}
 
       <button onClick={() => setMostrarNovo(!mostrarNovo)}
-        className="flex items-center gap-2 text-sm text-[#1a5ea8] font-semibold mb-3">
+        className="flex items-center gap-2 text-sm text-[#14213D] font-semibold mb-3">
         <Plus size={15} /> {mostrarNovo ? "Cancelar" : "Cadastrar novo cliente"}
       </button>
 
@@ -398,7 +396,7 @@ function StepCliente({ eId, clienteSelecionado, onSelect }) {
           <ClienteField label="Endereço" type="text" placeholder="Rua, nº – Bairro – Cidade/UF"
             value={novo.endereco} onChange={(e) => campo("endereco", e.target.value)} />
           <button onClick={handleCriar} disabled={!novo.nome.trim() || criando}
-            className="w-full bg-[#1a5ea8] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
+            className="w-full bg-[#14213D] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
             {criando ? "Salvando..." : "Salvar e selecionar"}
           </button>
         </div>
@@ -426,7 +424,7 @@ function StepServico({ eId, servicoSelecionado, onSelect, onVoltar }) {
         <div className="space-y-2 mb-6">
           {servicos.map((s) => (
             <div key={s.id} onClick={() => onSelect(s)}
-              className={`p-4 rounded-xl border cursor-pointer transition-all ${servicoSelecionado?.id === s.id ? "border-[#1a5ea8] bg-blue-50" : "border-gray-100 bg-white hover:border-[#7b8cd4]"}`}>
+              className={`p-4 rounded-xl border cursor-pointer transition-all ${servicoSelecionado?.id === s.id ? "border-[#14213D] bg-amber-50" : "border-gray-100 bg-white hover:border-[#D97706]"}`}>
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-sm font-semibold text-gray-800">{s.nome}</p>
@@ -517,7 +515,7 @@ function ItemSection({ label, items, setter, headerExtra }) {
         <div className="flex items-center gap-2">
           {headerExtra}
           <button onClick={() => addItemRow(setter)}
-            className="flex items-center gap-1 text-xs text-[#1a5ea8] font-semibold">
+            className="flex items-center gap-1 text-xs text-[#14213D] font-semibold">
             <Plus size={12} /> Adicionar
           </button>
         </div>
@@ -536,7 +534,7 @@ function ItemSection({ label, items, setter, headerExtra }) {
                   type="text" placeholder="Descrição do item"
                   value={item.descricao}
                   onChange={(e) => updateItemRow(setter, i, "descricao", e.target.value)}
-                  className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]"
+                  className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706]"
                 />
                 <button onClick={() => removeItemRow(setter, i)} className="text-red-400 p-1 flex-shrink-0">
                   <Trash2 size={14} />
@@ -549,7 +547,7 @@ function ItemSection({ label, items, setter, headerExtra }) {
                     type="number" min={0} step={1}
                     value={item.qtd}
                     onChange={(e) => updateItemRow(setter, i, "qtd", parseFloat(e.target.value) || 0)}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]"
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706]"
                   />
                 </div>
                 <div>
@@ -558,7 +556,7 @@ function ItemSection({ label, items, setter, headerExtra }) {
                     type="number" min={0} step={0.01}
                     value={item.vlUnit}
                     onChange={(e) => updateItemRow(setter, i, "vlUnit", parseFloat(e.target.value) || 0)}
-                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]"
+                    className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706]"
                   />
                 </div>
               </div>
@@ -578,57 +576,15 @@ function ItemSection({ label, items, setter, headerExtra }) {
   );
 }
 
-// ── Seletor de opção de equipamento (escolha única) ────────────────────────
-function OpcoesSection({ opcoes, opcaoIdx, setOpcaoIdx, apenasRef = false }) {
-  if (opcoes.length === 0) return null;
-  return (
-    <div className="mb-5">
-      <div className="mb-2">
-        <p className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Opção de Equipamento</p>
-        <p className="text-[10px] text-gray-400 mt-0.5">
-          {apenasRef
-            ? "Equipamento listado apenas para referência — não soma no total"
-            : "Selecione uma opção — apenas o valor selecionado entra no total"}
-        </p>
-      </div>
-      <div className="space-y-2">
-        {opcoes.map((o, i) => (
-          <div
-            key={i}
-            onClick={() => setOpcaoIdx(i)}
-            className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-              i === opcaoIdx ? "border-[#1a5ea8] bg-blue-50" : "border-gray-100 bg-white hover:border-[#7b8cd4]"
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${
-                i === opcaoIdx ? "border-[#1a5ea8]" : "border-gray-300"
-              }`}>
-                {i === opcaoIdx && <div className="w-2 h-2 rounded-full bg-[#1a5ea8]" />}
-              </div>
-              <span className="text-sm text-gray-800">{o.nome}</span>
-            </div>
-            <span className="text-sm font-bold text-gray-700 ml-2 flex-shrink-0">{fmtBRL(o.valorUnit)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ── Step 3: Itens ──────────────────────────────────────────────────────────
-function StepItens({ eId, itensEquip, setItensEquip, itensInst, setItensInst, opcoesEquip, setOpcoesEquip, opcaoIdx, setOpcaoIdx, equipApenasRef, setEquipApenasRef, servicoCategoria, onAvancar, onVoltar }) {
-  const ehFornecimento = servicoCategoria === "fornecimento";
+function StepItens({ eId, equipamentoTexto, setEquipamentoTexto, itensInst, setItensInst, onAvancar, onVoltar }) {
   const [modalCatalogo, setModalCatalogo] = useState(false);
-  const vlOpcao    = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
-  const totalEquip = equipApenasRef
-    ? 0
-    : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
-  const totalInst  = ehFornecimento ? 0 : itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
+  const totalInst = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
 
   function handleAdicionarDoCatalogo(item) {
-    setItensEquip((prev) => [...prev, item]);
-    toast.success("Equipamento adicionado! Selecione outro ou feche o catálogo.");
+    const linha = `${item.descricao} — ${item.qtd}x ${fmtBRL(item.vlUnit)}`;
+    setEquipamentoTexto((prev) => (prev ? `${prev}\n${linha}` : linha));
+    toast.success("Adicionado à descrição! Você pode ajustar o texto livremente.");
   }
 
   return (
@@ -645,58 +601,42 @@ function StepItens({ eId, itensEquip, setItensEquip, itensInst, setItensInst, op
         <p className="text-sm text-gray-500">Adicione os itens do orçamento</p>
         <button
           onClick={() => setModalCatalogo(true)}
-          className="flex items-center gap-1.5 text-xs font-semibold text-[#1a5ea8] bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm active:scale-95 transition-all"
+          className="flex items-center gap-1.5 text-xs font-semibold text-[#14213D] bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 shadow-sm active:scale-95 transition-all"
         >
           <PackageSearch size={13} />
           Catálogo Uniar
         </button>
       </div>
 
-      {ehFornecimento && (
-        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 mb-4">
-          <span className="text-xs font-semibold text-blue-700">Fornecimento apenas</span>
-          <span className="text-xs text-blue-500">— instalação não inclusa neste orçamento</span>
-        </div>
-      )}
-
-      <OpcoesSection opcoes={opcoesEquip} opcaoIdx={opcaoIdx} setOpcaoIdx={setOpcaoIdx} apenasRef={equipApenasRef} />
-
-      <ItemSection
-        label={opcoesEquip.length > 0 ? "Acessórios / Materiais" : "Equipamentos – Fornecimento"}
-        items={itensEquip} setter={setItensEquip}
-        headerExtra={
-          <button
-            onClick={() => setEquipApenasRef(!equipApenasRef)}
-            className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border transition-colors ${
-              equipApenasRef
-                ? "bg-amber-50 border-amber-300 text-amber-700"
-                : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"
-            }`}
-          >
-            {equipApenasRef ? "⚠ Só referência" : "Incluir no total"}
-          </button>
-        }
-      />
-      {equipApenasRef && (
-        <p className="text-[10px] text-amber-600 -mt-4 mb-4">
-          Equipamentos listados para referência — <strong>não somam no total</strong>.
+      <div className="mb-5">
+        <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide block mb-2">
+          Equipamento / Material
+        </label>
+        <textarea
+          rows={4}
+          value={equipamentoTexto}
+          onChange={(e) => setEquipamentoTexto(e.target.value)}
+          placeholder="Descreva o(s) equipamento(s) ou material(is) do orçamento. Ex: Split Hi-Wall Springer 12.000 BTU/h — 1un."
+          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none"
+        />
+        <p className="text-[10px] text-gray-400 mt-1">
+          Texto livre — use o Catálogo Uniar para consultar preços e adicionar aqui. Se quiser
+          valores detalhados por item (como peças com preço unitário), use a tabela abaixo.
         </p>
-      )}
+      </div>
 
-      {!ehFornecimento && (
-        <ItemSection label="Instalação / Serviço" items={itensInst} setter={setItensInst} />
-      )}
+      <ItemSection label="Materiais e Serviços (com valores)" items={itensInst} setter={setItensInst} />
 
-      <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex justify-between items-center mb-5">
-        <span className="text-sm font-semibold text-green-800">Total Estimado</span>
-        <span className="text-lg font-bold text-green-700">{fmtBRL(totalEquip + totalInst)}</span>
+      <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex justify-between items-center mb-5">
+        <span className="text-sm font-semibold text-amber-800">Total dos itens</span>
+        <span className="text-lg font-bold text-amber-700">{fmtBRL(totalInst)}</span>
       </div>
 
       <div className="flex gap-3">
         <button onClick={onVoltar} className="text-sm text-gray-500 font-medium px-4 py-2.5">← Voltar</button>
         <button onClick={onAvancar}
-          disabled={itensEquip.length === 0 && itensInst.length === 0 && opcoesEquip.length === 0}
-          className="flex-1 bg-[#1a5ea8] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
+          disabled={!equipamentoTexto.trim() && itensInst.length === 0}
+          className="flex-1 bg-[#14213D] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
           Revisar →
         </button>
       </div>
@@ -781,7 +721,7 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
   const Pill = ({ label, ativo, onClick }) => (
     <button onClick={onClick}
       className={`text-xs font-semibold px-3 py-1 rounded-full border transition-colors ${
-        ativo ? "bg-[#1a5ea8] border-[#1a5ea8] text-white" : "bg-white border-gray-200 text-gray-500"
+        ativo ? "bg-[#14213D] border-[#14213D] text-white" : "bg-white border-gray-200 text-gray-500"
       }`}>
       {label}
     </button>
@@ -792,7 +732,7 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
       {/* Header */}
       <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <PackageSearch size={18} className="text-[#1a5ea8]" />
+          <PackageSearch size={18} className="text-[#14213D]" />
           <p className="text-sm font-bold text-gray-800">Catálogo Uniar</p>
         </div>
         <button onClick={onClose} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100">
@@ -806,7 +746,7 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input autoFocus type="text" placeholder="Buscar marca, modelo, BTU..."
             value={busca} onChange={(e) => setBusca(e.target.value)}
-            className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
+            className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
         </div>
 
         {/* Filtros */}
@@ -843,7 +783,7 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
               return (
                 <div key={p.id} onClick={() => handleSelectProduto(p)}
                   className={`bg-white border rounded-xl p-3 cursor-pointer transition-all ${
-                    ativo ? "border-[#1a5ea8] bg-blue-50" : "border-gray-100 hover:border-[#7b8cd4]"
+                    ativo ? "border-[#14213D] bg-amber-50" : "border-gray-100 hover:border-[#D97706]"
                   }`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
@@ -860,7 +800,7 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
                           </span>
                         )}
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
-                          p.tipo === "FR" ? "bg-blue-50 text-blue-600" : "bg-orange-50 text-orange-600"
+                          p.tipo === "FR" ? "bg-sky-50 text-sky-600" : "bg-orange-50 text-orange-600"
                         }`}>
                           {p.tipo === "FR" ? "Só Fria" : "Q/F"}
                         </span>
@@ -889,29 +829,29 @@ function ModalBuscaCatalogo({ eId, onClose, onAdicionar }) {
                 <label className="text-[10px] text-gray-400 block mb-1">Qtd.</label>
                 <input type="number" min={1} step={1} value={qtd}
                   onChange={(e) => setQtd(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706] text-center" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 block mb-1">Tabela Uniar (R$)</label>
                 <input type="number" min={0} step={0.01} value={meuCusto}
                   onChange={(e) => handleCustoChange(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706] text-center" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 block mb-1">Desconto %</label>
                 <input type="number" min={0} max={100} step={0.5} value={desconto}
                   onChange={(e) => handleDescontoChange(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center" />
+                  className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706] text-center" />
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 block mb-1">Preço venda (R$)</label>
                 <input type="number" min={0} step={0.01} value={precoVenda}
                   onChange={(e) => setPrecoVenda(e.target.value)}
-                  className="w-full px-2 py-1.5 text-sm font-bold border border-[#1a5ea8] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] text-center text-green-700" />
+                  className="w-full px-2 py-1.5 text-sm font-bold border border-[#14213D] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706] text-center text-amber-700" />
               </div>
             </div>
             <button onClick={handleAdicionar}
-              className="w-full bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all">
+              className="w-full bg-[#14213D] text-white py-3 rounded-xl text-sm font-semibold active:scale-95 transition-all">
               + Adicionar ao orçamento
             </button>
           </div>
@@ -936,10 +876,10 @@ function Row({ label, value }) {
 
 function StepRevisao({
   eId,
-  cliente, servico, itensEquip, itensInst,
-  opcoesEquip, opcaoIdx, equipApenasRef,
+  cliente, servico, equipamentoTexto, itensInst,
   precoFinal, processo, observacoes,
   descricaoObjeto, garantia, pagamento, validade, prazoExecucao,
+  dataEmissao, onDataEmissaoChange,
   onPrecoChange, onProcessoChange, onObsChange,
   onDescChange, onGarantiaChange, onPagamentoChange, onValidadeChange, onPrazoChange,
   exibirFornecedor, setExibirFornecedor,
@@ -953,12 +893,8 @@ function StepRevisao({
   servicoCategoria, servicoNome,
   onVoltar, onRascunho, onFinalizar, salvando, modoEditar,
 }) {
-  const vlOpcao       = (!equipApenasRef && opcoesEquip.length > 0) ? (opcoesEquip[opcaoIdx]?.valorUnit || 0) : 0;
-  const totalEquip    = equipApenasRef
-    ? 0
-    : itensEquip.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0) + vlOpcao;
   const totalInst     = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
-  const totalSugerido = totalEquip + totalInst;
+  const totalSugerido = totalInst;
 
   return (
     <div>
@@ -973,38 +909,30 @@ function StepRevisao({
         {cliente?.endereco && <Row label="Endereço" value={cliente.endereco} />}
         <div className="border-t border-gray-100 pt-2 mt-1">
           <Row label="Serviço" value={servico?.nome} />
-          {opcoesEquip.length > 0 && (
-            <Row
-              label={`Equipamento${equipApenasRef ? " (ref.)" : ""}`}
-              value={equipApenasRef
-                ? opcoesEquip[opcaoIdx]?.nome || "—"
-                : `${opcoesEquip[opcaoIdx]?.nome || "—"} — ${fmtBRL(opcoesEquip[opcaoIdx]?.valorUnit || 0)}`}
-            />
-          )}
-          {itensEquip.length > 0 && (
-            <Row
-              label={`Acessórios${equipApenasRef ? " (ref.)" : ""}`}
-              value={equipApenasRef
-                ? `${itensEquip.length} item(s) — não cobrado`
-                : `${itensEquip.length} item(s) — ${fmtBRL(itensEquip.reduce((s,i) => s + (i.vlUnit||0)*(i.qtd||1), 0))}`}
-            />
-          )}
-          <Row label="Instalação" value={`${itensInst.length} item(s) — ${fmtBRL(totalInst)}`} />
+          {equipamentoTexto && <Row label="Equipamento/Material" value={equipamentoTexto} />}
+          <Row label="Materiais e Serviços" value={`${itensInst.length} item(s) — ${fmtBRL(totalInst)}`} />
         </div>
       </div>
 
       <div className="space-y-3 mb-4">
+        <div>
+          <label className="text-xs font-semibold text-gray-600 block mb-1">Data de emissão</label>
+          <input type="date" value={dataEmissao}
+            onChange={(e) => onDataEmissaoChange(e.target.value)}
+            className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
+        </div>
+
         <InputField label="Nº do Processo (opcional)" placeholder="Ex: 37120-26"
           value={processo} onChange={onProcessoChange} />
 
         <div>
           <label className="text-xs font-semibold text-gray-600 block mb-1">
             Preço final (R$){" "}
-            <span className="text-gray-400 font-normal">— calculado: {fmtBRL(totalSugerido)}</span>
+            <span className="text-gray-400 font-normal">— itens: {fmtBRL(totalSugerido)}</span>
           </label>
           <input type="number" step="0.01" value={precoFinal}
             onChange={(e) => onPrecoChange(e.target.value)}
-            className="w-full px-3 py-2.5 text-sm bg-white border border-[#1a5ea8] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] font-bold text-gray-800" />
+            className="w-full px-3 py-2.5 text-sm bg-white border border-[#14213D] rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] font-bold text-gray-800" />
         </div>
       </div>
 
@@ -1014,7 +942,7 @@ function StepRevisao({
         </label>
         <textarea rows={4} value={descricaoObjeto} onChange={(e) => onDescChange(e.target.value)}
           placeholder="Descreva o objeto da proposta..."
-          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] resize-none" />
+          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none" />
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
@@ -1024,7 +952,7 @@ function StepRevisao({
           </p>
           <button
             onClick={() => setCondicoesServico(getCondicoesDefault(servicoCategoria, servicoNome, garantia, prazoExecucao))}
-            className="text-xs text-[#1a5ea8] font-semibold hover:underline"
+            className="text-xs text-[#14213D] font-semibold hover:underline"
           >
             Restaurar padrão
           </button>
@@ -1038,7 +966,7 @@ function StepRevisao({
                 onChange={(e) => setCondicoesServico(prev =>
                   prev.map((item, i) => i === idx ? { ...item, titulo: e.target.value } : item)
                 )}
-                className="w-28 flex-shrink-0 px-2 py-1.5 text-xs font-bold bg-[#1a5ea8] text-white rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="w-28 flex-shrink-0 px-2 py-1.5 text-xs font-bold bg-[#14213D] text-white rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-[#D97706]"
                 placeholder="Título"
               />
               <textarea
@@ -1047,7 +975,7 @@ function StepRevisao({
                 onChange={(e) => setCondicoesServico(prev =>
                   prev.map((item, i) => i === idx ? { ...item, texto: e.target.value } : item)
                 )}
-                className="flex-1 px-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4] resize-none"
+                className="flex-1 px-2 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706] resize-none"
                 placeholder="Texto da condição..."
               />
               <button
@@ -1061,7 +989,7 @@ function StepRevisao({
         </div>
         <button
           onClick={() => setCondicoesServico(prev => [...prev, { titulo: "Nova", texto: "" }])}
-          className="flex items-center gap-1.5 text-xs text-[#1a5ea8] font-semibold mt-3"
+          className="flex items-center gap-1.5 text-xs text-[#14213D] font-semibold mt-3"
         >
           <Plus size={13} /> Adicionar condição
         </button>
@@ -1088,7 +1016,7 @@ function StepRevisao({
             onClick={() => { setExibirFornecedor(!exibirFornecedor); if (exibirFornecedor) setFornecedor(null); }}
             className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-colors ${
               exibirFornecedor
-                ? "bg-blue-50 border-blue-200 text-blue-700"
+                ? "bg-amber-50 border-amber-300 text-amber-700"
                 : "bg-gray-50 border-gray-200 text-gray-500"
             }`}
           >
@@ -1114,7 +1042,7 @@ function StepRevisao({
             onClick={() => setExibirDadosBancarios(!exibirDadosBancarios)}
             className={`text-xs font-semibold px-3 py-1 rounded-lg border transition-colors ${
               exibirDadosBancarios
-                ? "bg-blue-50 border-blue-200 text-blue-700"
+                ? "bg-amber-50 border-amber-300 text-amber-700"
                 : "bg-gray-50 border-gray-200 text-gray-400"
             }`}
           >
@@ -1143,19 +1071,19 @@ function StepRevisao({
         <label className="text-xs font-semibold text-gray-600 block mb-1">Observações internas (opcional)</label>
         <textarea rows={2} placeholder="Observações técnicas, condições especiais..."
           value={observacoes} onChange={(e) => onObsChange(e.target.value)}
-          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4] resize-none" />
+          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none" />
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex justify-between items-center mb-5">
-        <span className="text-sm font-semibold text-green-800">Total Geral</span>
-        <span className="text-xl font-bold text-green-700">
+      <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex justify-between items-center mb-5">
+        <span className="text-sm font-semibold text-amber-800">Total Geral</span>
+        <span className="text-xl font-bold text-amber-700">
           {fmtBRL(parseFloat(precoFinal) || totalSugerido)}
         </span>
       </div>
 
       <div className="space-y-2">
         <button onClick={onFinalizar} disabled={salvando}
-          className="w-full flex items-center justify-center gap-2 bg-[#1a5ea8] text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
+          className="w-full flex items-center justify-center gap-2 bg-[#14213D] text-white py-3 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
           <FileText size={15} />
           {salvando ? "Salvando..." : (modoEditar ? "Salvar alterações" : "Criar orçamento")}
         </button>
@@ -1214,14 +1142,14 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
 
   if (fornecedorSelecionado) {
     return (
-      <div className="flex items-start justify-between bg-blue-50 border border-blue-200 rounded-xl p-3">
+      <div className="flex items-start justify-between bg-amber-50 border border-amber-300 rounded-xl p-3">
         <div>
           <p className="text-sm font-semibold text-gray-800">{fornecedorSelecionado.nome}</p>
           {fornecedorSelecionado.cnpj  && <p className="text-xs text-gray-500 mt-0.5">CNPJ {fornecedorSelecionado.cnpj}</p>}
           {fornecedorSelecionado.banco && <p className="text-xs text-gray-500">{fornecedorSelecionado.banco}</p>}
         </div>
         <button onClick={() => onSelect(null)}
-          className="text-xs text-[#1a5ea8] font-semibold ml-3 flex-shrink-0">
+          className="text-xs text-[#14213D] font-semibold ml-3 flex-shrink-0">
           Trocar
         </button>
       </div>
@@ -1234,14 +1162,14 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
         <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
         <input type="text" placeholder="Buscar fornecedor por nome ou CNPJ..."
           value={busca} onChange={e => setBusca(e.target.value)}
-          className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]" />
+          className="w-full pl-9 pr-3 py-2.5 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706]" />
       </div>
 
       {loading ? <p className="text-sm text-gray-400 text-center py-4">Carregando...</p> : (
         <div className="space-y-2 mb-3 max-h-40 overflow-y-auto">
           {filtrados.map(f => (
             <div key={f.id} onClick={() => onSelect(f)}
-              className="p-3 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-[#7b8cd4] transition-all">
+              className="p-3 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-[#D97706] transition-all">
               <p className="text-sm font-semibold text-gray-800">{f.nome}</p>
               <div className="flex flex-wrap gap-x-3 mt-0.5">
                 {f.cnpj  && <span className="text-xs text-gray-400">CNPJ {f.cnpj}</span>}
@@ -1256,7 +1184,7 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
       )}
 
       <button onClick={() => setMostrarNovo(!mostrarNovo)}
-        className="flex items-center gap-2 text-sm text-[#1a5ea8] font-semibold mb-3">
+        className="flex items-center gap-2 text-sm text-[#14213D] font-semibold mb-3">
         <Plus size={15} /> {mostrarNovo ? "Cancelar" : "Cadastrar novo fornecedor"}
       </button>
 
@@ -1269,7 +1197,7 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
           <ClienteField label="Dados Bancários" type="text" placeholder="Ex: Itaú · Ag. 0000 · CC 00000-0"
             value={novo.banco} onChange={e => campo("banco", e.target.value)} />
           <button onClick={handleCriar} disabled={!novo.nome.trim() || criando}
-            className="w-full bg-[#1a5ea8] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
+            className="w-full bg-[#14213D] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50 active:scale-95 transition-all">
             {criando ? "Salvando..." : "Salvar e selecionar"}
           </button>
         </div>
@@ -1402,9 +1330,9 @@ function SeletorDestinatario({ eId, clienteId, direcionadoA, setDirecionadoA, ao
     <div className="flex gap-1.5 mt-2 w-full">
       <input autoFocus type="text" placeholder={placeholder} value={value} onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter") onSave(); if (e.key === "Escape") onCancel(); }}
-        className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+        className="flex-1 px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706]" />
       <button onClick={onSave} disabled={!value.trim() || saving}
-        className="text-xs px-2.5 py-1.5 bg-[#1a5ea8] text-white rounded-lg disabled:opacity-40">
+        className="text-xs px-2.5 py-1.5 bg-[#14213D] text-white rounded-lg disabled:opacity-40">
         {saving ? "..." : "OK"}
       </button>
       <button onClick={onCancel}
@@ -1426,8 +1354,8 @@ function SeletorDestinatario({ eId, clienteId, direcionadoA, setDirecionadoA, ao
             <button key={e.id} onClick={() => selecionarEntidade(e)}
               className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-colors ${
                 entidadeSel?.id === e.id
-                  ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
-                  : "bg-white border-gray-200 text-gray-600 hover:border-[#7b8cd4]"
+                  ? "bg-[#14213D] border-[#14213D] text-white"
+                  : "bg-white border-gray-200 text-gray-600 hover:border-[#D97706]"
               }`}>
               {e.nome}
             </button>
@@ -1450,8 +1378,8 @@ function SeletorDestinatario({ eId, clienteId, direcionadoA, setDirecionadoA, ao
               <button key={o.nome} onClick={() => selecionarOrgao(o.nome)}
                 className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-colors ${
                   aoCuidadoDe === o.nome
-                    ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
-                    : "bg-white border-gray-200 text-gray-600 hover:border-[#7b8cd4]"
+                    ? "bg-[#14213D] border-[#14213D] text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-[#D97706]"
                 }`}>
                 {o.nome}
               </button>
@@ -1474,8 +1402,8 @@ function SeletorDestinatario({ eId, clienteId, direcionadoA, setDirecionadoA, ao
               <button key={r} onClick={() => setResponsavel(r)}
                 className={`text-xs px-3 py-1.5 rounded-xl border font-medium transition-colors ${
                   responsavel === r
-                    ? "bg-[#1a5ea8] border-[#1a5ea8] text-white"
-                    : "bg-white border-gray-200 text-gray-600 hover:border-[#7b8cd4]"
+                    ? "bg-[#14213D] border-[#14213D] text-white"
+                    : "bg-white border-gray-200 text-gray-600 hover:border-[#D97706]"
                 }`}>
                 {r}
               </button>
@@ -1501,19 +1429,19 @@ function SeletorDestinatario({ eId, clienteId, direcionadoA, setDirecionadoA, ao
           <label className="text-[10px] text-gray-500 block mb-0.5">Direcionado a</label>
           <input type="text" value={direcionadoA} onChange={(e) => setDirecionadoA(e.target.value)}
             placeholder="Ex: FUNCAMP, Unicamp..."
-            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706]" />
         </div>
         <div>
           <label className="text-[10px] text-gray-500 block mb-0.5">Aos cuidados de</label>
           <input type="text" value={aoCuidadoDe} onChange={(e) => setAoCuidadoDe(e.target.value)}
             placeholder="Ex: Instituto de Biologia, DSTr..."
-            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706]" />
         </div>
         <div>
           <label className="text-[10px] text-gray-500 block mb-0.5">Responsável</label>
           <input type="text" value={responsavel} onChange={(e) => setResponsavel(e.target.value)}
             placeholder="Nome do responsável"
-            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#7b8cd4]" />
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#D97706]" />
         </div>
       </div>
 

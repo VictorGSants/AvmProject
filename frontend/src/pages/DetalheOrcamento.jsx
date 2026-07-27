@@ -4,7 +4,7 @@ import { FileDown, CheckCircle, XCircle, Send, Trash2, Pencil } from "lucide-rea
 import Header from "../components/Header";
 import {
   obterOrcamento, atualizarStatus, excluirOrcamento,
-  corStatus, labelStatus, fmtBRL, STATUS,
+  corStatus, labelStatus, fmtBRL, fmtData, STATUS,
 } from "../services/orcamentoService";
 import { gerarPdfOrcamento } from "../services/orcamentoPdf";
 import { EMPRESAID } from "../config/empresa";
@@ -134,12 +134,20 @@ export default function DetalheOrcamento() {
           )}
 
           {/* Data */}
-          {orc.criadoEm && (
+          {(orc.dataEmissao || orc.criadoEm) && (
             <p className="text-xs text-gray-400 mt-1">
-              Criado em {new Date(orc.criadoEm.seconds * 1000).toLocaleDateString("pt-BR")}
+              Emitido em {fmtData(orc.dataEmissao || orc.criadoEm)}
             </p>
           )}
         </div>
+
+        {/* Equipamento / Material */}
+        {orc.equipamentoTexto && (
+          <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
+            <p className="text-xs font-semibold text-gray-500 mb-1">Equipamento / Material</p>
+            <p className="text-sm text-gray-700 whitespace-pre-wrap">{orc.equipamentoTexto}</p>
+          </div>
+        )}
 
         {/* Observações */}
         {orc.observacoes && (

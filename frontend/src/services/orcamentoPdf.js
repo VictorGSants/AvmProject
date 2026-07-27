@@ -2,11 +2,11 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import logoUrl from "../images/Icon.png";
 
-const BRAND   = [26, 94, 168];
-const GREEN   = [26, 122, 58];
-const LIGHT   = [244, 247, 251];
-const MID     = [85, 85, 85];
-const DARK    = [26, 26, 26];
+const NAVY   = [20, 33, 61];     // cabeçalho e faixas de seção
+const ORANGE = [217, 119, 6];    // número da seção, destaques, total geral
+const LIGHT  = [244, 247, 251];
+const MID    = [85, 85, 85];
+const DARK   = [26, 26, 26];
 
 function fmt(v) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v ?? 0);
@@ -21,7 +21,7 @@ function loadImage(src) {
   });
 }
 
-function drawPageFooter(doc) {
+function drawPageFooter(doc, numero) {
   const total = doc.internal.getNumberOfPages();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
@@ -31,17 +31,40 @@ function drawPageFooter(doc) {
     doc.line(14, 289, 196, 289);
     doc.text(
       "AVM AR Campinas · contato@avmarcampinas.com.br · (19) 4141-7244",
-      105, 293, { align: "center" }
+      14, 293
     );
-    doc.text(`Pág. ${i} de ${total}`, 196, 293, { align: "right" });
+    doc.text(`Orçamento ${numero} · Pág. ${i} de ${total}`, 196, 293, { align: "right" });
   }
+}
+
+// Desenha a faixa navy numerada de uma seção e retorna o Y seguinte.
+function secaoHeader(doc, numero, titulo, y) {
+  doc.setFillColor(...NAVY);
+  doc.rect(14, y, 182, 7, "F");
+  doc.setFillColor(...ORANGE);
+  doc.rect(14, y, 7, 7, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  doc.text(String(numero), 17.5, y + 4.8, { align: "center" });
+  doc.setFontSize(8.5);
+  doc.text(titulo, 24, y + 4.8);
+  return y + 7 + 4;
+}
+
+// Garante espaço mínimo antes de iniciar uma nova seção, quebrando página se necessário.
+function garantirEspaco(doc, curY, minimo = 30) {
+  if (curY > 297 - minimo) {
+    doc.addPage();
+    return 20;
+  }
+  return curY;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Função principal (assíncrona para carregar a logo)
 // ─────────────────────────────────────────────────────────────────────────────
 export async function gerarPdfOrcamento(orcamento) {
-  // Carrega a logo antes de gerar o PDF
   let logoImg = null;
   try { logoImg = await loadImage(logoUrl); } catch { /* segue sem logo */ }
 
@@ -58,9 +81,9 @@ export async function gerarPdfOrcamento(orcamento) {
     clienteTelefone = "",
     servicoNome = "",
     descricaoObjeto = "",
+    equipamentoTexto = "",
     itensEquipamentos = [],
     itensInstalacao   = [],
-    opcoesEquipamento = [],
     opcaoEquipamentoSelecionada = null,
     equipApenasRef    = false,
     calculo = {},
@@ -83,22 +106,22 @@ export async function gerarPdfOrcamento(orcamento) {
   const fornecedorCnpj  = fornecedor?.cnpj  || "";
   const fornecedorBanco = fornecedor?.banco  || "";
 
-  const dataEmissao = orcamento.criadoEm
-    ? new Date(orcamento.criadoEm.seconds * 1000).toLocaleDateString("pt-BR", {
+  const dataEmissaoTs = orcamento.dataEmissao || orcamento.criadoEm;
+  const dataEmissao = dataEmissaoTs
+    ? new Date(dataEmissaoTs.seconds * 1000).toLocaleDateString("pt-BR", {
         day: "2-digit", month: "long", year: "numeric",
       })
     : new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "long", year: "numeric" });
 
+  let secNum = 1;
+
   // ── Cabeçalho ─────────────────────────────────────────────────────────────
-  doc.setFillColor(...BRAND);
+  doc.setFillColor(...NAVY);
   doc.rect(0, 0, 210, 32, "F");
 
-  // Logo alinhado verticalmente com o texto
   if (logoImg) {
     doc.addImage(logoImg, "PNG", 14, 8, 14, 14);
   }
-
-  // Texto do cabeçalho — verticalmente centralizado com a logo
   const txtX = logoImg ? 31 : 14;
 
   doc.setTextColor(255, 255, 255);
@@ -116,299 +139,152 @@ export async function gerarPdfOrcamento(orcamento) {
   );
   doc.text("Rua Uruguai, 38 – NV Europa – Campinas/SP  ·  (19) 4141-7244 · (19) 99280-7850", txtX, 27);
 
-  // Número da proposta + instituição (canto direito)
-  const instituicaoHeader = direcionadoA || aoCuidadoDe;
-  if (instituicaoHeader) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(6.5);
-    doc.setTextColor(255, 210, 80);
-    doc.text(`AOS CUIDADOS DE ${instituicaoHeader.toUpperCase()}`, 196, 8, { align: "right" });
+  doc.setTextColor(...ORANGE);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("ORÇAMENTO", 196, 13, { align: "right" });
+  doc.setFontSize(18);
+  doc.text(numero, 196, 21, { align: "right" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(220, 225, 235);
+  doc.text(dataEmissao, 196, 27, { align: "right" });
+
+  let curY = 38;
+
+  // ── Aos cuidados de ─────────────────────────────────────────────────────────
+  const linhaCuidado = [direcionadoA, aoCuidadoDe].filter(Boolean).join(" / ");
+  if (linhaCuidado) {
+    doc.setFillColor(...LIGHT);
+    doc.rect(14, curY, 182, 8, "F");
+    doc.setFillColor(...ORANGE);
+    doc.rect(14, curY, 1.2, 8, "F");
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(7.5);
-    doc.setTextColor(255, 255, 255);
-    doc.text("PROPOSTA", 196, 14.5, { align: "right" });
-    doc.setFontSize(15);
-    doc.text(numero, 196, 22, { align: "right" });
+    doc.setFontSize(7);
+    doc.setTextColor(...NAVY);
+    doc.text("AOS CUIDADOS DE:", 18, curY + 5);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(7.5);
-    doc.text(dataEmissao, 196, 28.5, { align: "right" });
+    doc.setFontSize(8.5);
+    doc.setTextColor(...DARK);
+    doc.text(linhaCuidado, 52, curY + 5);
+    curY += 8 + 6;
   } else {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(8);
-    doc.text("PROPOSTA", 196, 12, { align: "right" });
-    doc.setFontSize(17);
-    doc.text(numero, 196, 20.5, { align: "right" });
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.text(dataEmissao, 196, 27, { align: "right" });
+    curY += 4;
   }
 
-  // ── Faixa de informações principais ────────────────────────────────────────
+  // ── Seção: Identificação do Cliente ─────────────────────────────────────────
   const clienteDoc = [
     clienteCnpj && `CNPJ ${clienteCnpj}`,
     clienteCpf  && `CPF ${clienteCpf}`,
-  ].filter(Boolean).join("  ·  ") || "—";
+  ].filter(Boolean).join("  ·  ");
 
   const contatoLinha = [
     clienteEmail    && `Email: ${clienteEmail}`,
     clienteTelefone && `Tel.: ${clienteTelefone}`,
-    clienteEndereco && clienteEndereco,
   ].filter(Boolean).join("   |   ");
 
-  const infoBody = [
-    [processo || "—", clienteNome, clienteDoc, garantia],
-    ...(contatoLinha ? [[{
-      content: contatoLinha, colSpan: 4,
-      styles: { fontStyle: "normal", textColor: [70, 100, 150], fontSize: 7, cellPadding: { top: 2, right: 3, bottom: 3, left: 3 } }
-    }]] : []),
-  ];
+  const linhasCliente = [["Cliente / Órgão", clienteNome || "—"]];
+  if (clienteDoc)     linhasCliente.push(["CNPJ / CPF", clienteDoc]);
+  if (contatoLinha)   linhasCliente.push(["Contato", contatoLinha]);
+  linhasCliente.push(["Local de Execução", clienteEndereco || "—"]);
+  if (responsavel)    linhasCliente.push(["Responsável pelo setor", responsavel]);
+  linhasCliente.push(["Validade do Orçamento", validade ? `${validade}, a partir da data de emissão` : "—"]);
+  if (processo)        linhasCliente.push(["Processo", processo]);
+  if (servicoNome)      linhasCliente.push(["Serviço", servicoNome]);
 
+  curY = secaoHeader(doc, secNum++, "IDENTIFICAÇÃO DO CLIENTE", curY);
   autoTable(doc, {
-    startY: 36,
+    startY: curY,
     margin: { left: 14, right: 14 },
-    head: [["PROCESSO", "CONTRATANTE", "CNPJ / CPF", "GARANTIA"]],
-    body: infoBody,
-    headStyles: {
-      fillColor: [232, 240, 248], textColor: BRAND,
-      fontStyle: "bold", fontSize: 7,
-      cellPadding: { top: 3, right: 3, bottom: 1, left: 3 },
-      lineWidth: 0,
-    },
-    bodyStyles: {
-      fillColor: [232, 240, 248], textColor: DARK,
-      fontStyle: "bold", fontSize: 8.5,
-      cellPadding: { top: 1, right: 3, bottom: 4, left: 3 },
-      lineWidth: 0,
-    },
+    body: linhasCliente,
+    styles: { fontSize: 8.5, cellPadding: 3, textColor: DARK, lineWidth: 0 },
     columnStyles: {
-      0: { cellWidth: 24 },
-      1: { cellWidth: 52 },
-      2: { cellWidth: 52, fontStyle: "normal", textColor: MID, fontSize: 7.5 },
-      3: { cellWidth: "auto", fontStyle: "normal", textColor: MID, fontSize: 7.5 },
+      0: { cellWidth: 50, fontStyle: "bold", textColor: NAVY },
+      1: { cellWidth: "auto" },
     },
-    tableLineWidth: 0,
+    alternateRowStyles: { fillColor: LIGHT },
   });
+  curY = doc.lastAutoTable.finalY + 8;
 
-  // ── Faixa de destinatário (apenas quando preenchido) ──────────────────────
-  if (direcionadoA || aoCuidadoDe || responsavel) {
-    const destY = doc.lastAutoTable.finalY;
-
-    autoTable(doc, {
-      startY: destY,
-      margin: { left: 14, right: 14 },
-      head: [["DIRECIONADO A", "AOS CUIDADOS DE", "RESPONSÁVEL"]],
-      body: [[direcionadoA || "—", aoCuidadoDe || "—", responsavel || "—"]],
-      headStyles: {
-        fillColor: BRAND, textColor: [255, 255, 255],
-        fontStyle: "bold", fontSize: 7,
-        cellPadding: { top: 2, right: 3, bottom: 1, left: 3 },
-        lineWidth: 0,
-      },
-      bodyStyles: {
-        fillColor: [220, 232, 248], textColor: DARK,
-        fontStyle: "bold", fontSize: 8.5,
-        cellPadding: { top: 1, right: 3, bottom: 4, left: 3 },
-        lineWidth: 0,
-      },
-      columnStyles: {
-        0: { cellWidth: 60 },
-        1: { cellWidth: 60 },
-        2: { cellWidth: "auto" },
-      },
-      tableLineWidth: 0,
-    });
-  }
-
-  // ── Objeto da Proposta ─────────────────────────────────────────────────────
-  let curY = doc.lastAutoTable.finalY + 6;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...BRAND);
-  doc.text("OBJETO DA PROPOSTA", 14, curY);
-  curY += 5;
-
-  doc.setDrawColor(...BRAND);
-  doc.setLineWidth(0.4);
-  doc.line(14, curY, 196, curY);
-  curY += 4;
-
+  // ── Seção: Objeto do Orçamento ───────────────────────────────────────────────
   if (descricaoObjeto) {
+    curY = garantirEspaco(doc, curY);
+    curY = secaoHeader(doc, secNum++, "OBJETO DO ORÇAMENTO", curY);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(...MID);
     const linhas = doc.splitTextToSize(descricaoObjeto, 182);
     doc.text(linhas, 14, curY);
-    curY += linhas.length * 4.5 + 4;
+    curY += linhas.length * 4.5 + 8;
   }
 
-  // ── Opção de equipamento selecionada (quando existir) ─────────────────────
-  if (opcoesEquipamento.length > 0 && opcaoEquipamentoSelecionada) {
-    const rotulo = equipApenasRef ? "EQUIPAMENTO SELECIONADO (referência)" : "EQUIPAMENTO SELECIONADO";
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(...BRAND);
-    doc.text(rotulo, 14, curY);
-    curY += 2;
-
-    autoTable(doc, {
-      startY: curY,
-      margin: { left: 14, right: 14 },
-      head: [["MODELO / DESCRIÇÃO", "VALOR"]],
-      body: [[
-        opcaoEquipamentoSelecionada.nome || "—",
-        fmt(opcaoEquipamentoSelecionada.valorUnit || 0) + (equipApenasRef ? " (ref.)" : ""),
-      ]],
-      styles: { fontSize: 8, cellPadding: 2.5, textColor: DARK },
-      headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 8 },
-      columnStyles: {
-        0: { cellWidth: "auto" },
-        1: { cellWidth: 32, halign: "right" },
-      },
-    });
-    curY = doc.lastAutoTable.finalY + 6;
-  }
-
-  // ── Tabela Equipamentos ────────────────────────────────────────────────────
-  if (itensEquipamentos.length > 0) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(...BRAND);
-    doc.text("EQUIPAMENTOS – FORNECIMENTO", 14, curY);
-    curY += 2;
-
-    autoTable(doc, {
-      startY: curY,
-      margin: { left: 14, right: 14 },
-      head: [["#", "DESCRIÇÃO", "QTD.", "VL. UNIT.", "SUBTOTAL"]],
-      body: [
-        ...itensEquipamentos.map((item, i) => [
-          String(i + 1),
-          item.descricao || item.desc || "—",
-          String(item.qtd ?? 1),
-          fmt(item.vlUnit),
-          fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
-        ]),
-        ["", equipApenasRef ? "* Valores para referência — não incluídos no total" : "Subtotal equipamentos",
-         "", "", equipApenasRef ? "—" : fmt(calculo.totalEquipamentos ?? 0)],
-      ],
-      styles: { fontSize: 7.5, cellPadding: 2.5, textColor: DARK },
-      headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 8 },
-      alternateRowStyles: { fillColor: LIGHT },
-      columnStyles: {
-        0: { cellWidth: 8 },
-        1: { cellWidth: "auto" },
-        2: { cellWidth: 14, halign: "right" },
-        3: { cellWidth: 26, halign: "right" },
-        4: { cellWidth: 28, halign: "right" },
-      },
-      didParseCell(data) {
-        const isLast = data.row.index === itensEquipamentos.length;
-        if (isLast) {
-          data.cell.styles.fillColor = [232, 240, 248];
-          data.cell.styles.fontStyle = "bold";
-        }
-      },
-    });
-
-    curY = doc.lastAutoTable.finalY + 6;
-  }
-
-  // ── Tabela Instalação (não aparece em orçamentos só de fornecimento) ───────
-  if (itensInstalacao.length > 0) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(...BRAND);
-    doc.text("INSTALAÇÃO / SERVIÇO", 14, curY);
-    curY += 2;
-
-    autoTable(doc, {
-      startY: curY,
-      margin: { left: 14, right: 14 },
-      head: [["#", "DESCRIÇÃO", "QTD.", "VL. UNIT.", "SUBTOTAL"]],
-      body: [
-        ...itensInstalacao.map((item, i) => [
-          String(i + 1),
-          item.descricao || item.desc || "—",
-          String(item.qtd ?? 1),
-          fmt(item.vlUnit),
-          fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
-        ]),
-        ["", "Subtotal mão de obra", "", "", fmt(calculo.totalInstalacao ?? 0)],
-      ],
-      styles: { fontSize: 7.5, cellPadding: 2.5, textColor: DARK },
-      headStyles: { fillColor: BRAND, textColor: 255, fontStyle: "bold", fontSize: 8 },
-      alternateRowStyles: { fillColor: LIGHT },
-      columnStyles: {
-        0: { cellWidth: 8 },
-        1: { cellWidth: "auto" },
-        2: { cellWidth: 14, halign: "right" },
-        3: { cellWidth: 26, halign: "right" },
-        4: { cellWidth: 28, halign: "right" },
-      },
-      didParseCell(data) {
-        const isLast = data.row.index === itensInstalacao.length;
-        if (isLast) {
-          data.cell.styles.fillColor = [232, 240, 248];
-          data.cell.styles.fontStyle = "bold";
-        }
-      },
-    });
-
-    curY = doc.lastAutoTable.finalY + 6;
-  }
-
-  // ── Resumo de Valores ──────────────────────────────────────────────────────
-  if (curY > 215) { doc.addPage(); curY = 20; }
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...BRAND);
-  doc.text("RESUMO DE VALORES", 14, curY);
-  curY += 2;
-  doc.setDrawColor(...BRAND);
-  doc.setLineWidth(0.4);
-  doc.line(14, curY, 196, curY);
-  curY += 5;
-
-  const resumoLinhas = [];
-  if ((calculo.totalEquipamentos ?? 0) > 0)
-    resumoLinhas.push(["Subtotal equipamentos", calculo.totalEquipamentos]);
-  if ((calculo.totalInstalacao ?? 0) > 0)
-    resumoLinhas.push(["Subtotal instalação / mão de obra", calculo.totalInstalacao]);
-
-  for (const [label, valor] of resumoLinhas) {
-    doc.setFillColor(248, 250, 252);
-    doc.rect(14, curY - 1, 182, 9, "F");
+  // ── Seção: Equipamento / Material ────────────────────────────────────────────
+  if (equipamentoTexto) {
+    curY = garantirEspaco(doc, curY);
+    curY = secaoHeader(doc, secNum++, "EQUIPAMENTO / MATERIAL", curY);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(...MID);
-    doc.text(label, 18, curY + 5);
-    doc.setFont("helvetica", "bold");
-    doc.setTextColor(...DARK);
-    doc.text(fmt(valor), 194, curY + 5, { align: "right" });
-    curY += 11;
+    const linhasEquip = doc.splitTextToSize(equipamentoTexto, 182);
+    doc.text(linhasEquip, 14, curY);
+    curY += linhasEquip.length * 4.5 + 8;
   }
 
-  curY += 3;
-  doc.setDrawColor(...GREEN);
-  doc.setLineWidth(0.5);
-  doc.line(14, curY, 196, curY);
-  doc.setFillColor(238, 251, 242);
-  doc.rect(14, curY, 182, 12, "F");
+  // ── Seção: Relação de Materiais e Serviços ───────────────────────────────────
+  // itensInstalacao é a tabela editável atual; itensEquipamentos e
+  // opcaoEquipamentoSelecionada só existem em orçamentos antigos (compatibilidade).
+  const itensLegado = (itensEquipamentos || []).map((i) => ({ ...i, ref: equipApenasRef }));
+  const itemOpcaoLegado = opcaoEquipamentoSelecionada
+    ? [{ descricao: opcaoEquipamentoSelecionada.nome, qtd: 1, vlUnit: opcaoEquipamentoSelecionada.valorUnit, ref: equipApenasRef }]
+    : [];
+  const itensCombinados = [...itensInstalacao, ...itensLegado, ...itemOpcaoLegado];
+  const totalGeral = calculo.totalGeral ?? orcamento.precoFinal ?? 0;
+
+  curY = garantirEspaco(doc, curY, 50);
+
+  if (itensCombinados.length > 0) {
+    curY = secaoHeader(doc, secNum++, "RELAÇÃO DE MATERIAIS E SERVIÇOS", curY);
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: 14, right: 14 },
+      head: [["#", "DESCRIÇÃO", "UNID.", "QTD.", "VLR. UNIT.", "VLR. TOTAL"]],
+      body: itensCombinados.map((item, i) => [
+        String(i + 1),
+        (item.descricao || item.desc || "—") + (item.ref ? " (ref.)" : ""),
+        "un.",
+        String(item.qtd ?? 1),
+        fmt(item.vlUnit),
+        item.ref ? "—" : fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
+      ]),
+      styles: { fontSize: 7.5, cellPadding: 2.5, textColor: DARK },
+      headStyles: { fillColor: NAVY, textColor: 255, fontStyle: "bold", fontSize: 8 },
+      alternateRowStyles: { fillColor: LIGHT },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 14, halign: "center" },
+        3: { cellWidth: 14, halign: "right" },
+        4: { cellWidth: 26, halign: "right" },
+        5: { cellWidth: 28, halign: "right" },
+      },
+    });
+    curY = doc.lastAutoTable.finalY + 3;
+  } else {
+    curY = secaoHeader(doc, secNum++, "VALOR DO ORÇAMENTO", curY);
+  }
+
+  curY = garantirEspaco(doc, curY, 20);
+  doc.setFillColor(...ORANGE);
+  doc.rect(14, curY, 182, 10, "F");
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9.5);
-  doc.setTextColor(...GREEN);
-  doc.text("TOTAL GERAL", 19, curY + 8.5);
-  doc.setFontSize(13);
-  doc.text(fmt(calculo.totalGeral ?? 0), 193, curY + 9, { align: "right" });
-  curY += 22;
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text("TOTAL GERAL DO ORÇAMENTO", 18, curY + 6.5);
+  doc.setFontSize(11.5);
+  doc.text(fmt(totalGeral), 192, curY + 6.7, { align: "right" });
+  curY += 10 + 8;
 
-  // ── Página 2 — Condições ───────────────────────────────────────────────────
-  doc.addPage();
-  curY = 20;
-
-  // Detecção de categoria — a ordem importa: corretiva antes de manutenção geral
+  // ── Seção: Condições do Serviço ──────────────────────────────────────────────
   const ehFornecimento = servicoCategoria === "fornecimento";
   const ehCorretiva    = !ehFornecimento && (
     servicoCategoria === "corretiva" ||
@@ -419,14 +295,6 @@ export async function gerarPdfOrcamento(orcamento) {
       ? !["instalacao"].includes(servicoCategoria)
       : /manut|preventi|higien|pmoc/i.test(servicoNome)
   );
-
-  doc.setFillColor(...BRAND);
-  doc.rect(14, curY - 3, 182, 12, "F");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255);
-  doc.text("CONDIÇÕES DO SERVIÇO", 105, curY + 5, { align: "center" });
-  curY += 16;
 
   const condicoesInstalacao = [
     ["Equipamento",
@@ -443,7 +311,6 @@ export async function gerarPdfOrcamento(orcamento) {
      "A CONTRATADA responde por danos causados por seus colaboradores, com direito a contraditório e ampla defesa."],
   ];
 
-  // Condições específicas para manutenção preventiva / geral
   const condicoesManutencao = [
     ["Execução",
      "Serviço executado por técnico qualificado, seguindo NBR 16280 e demais normas ABNT/NRs. Uso de EPI completo e equipamentos calibrados. Equipe uniformizada com crachá DSTr/Unicamp."],
@@ -457,7 +324,6 @@ export async function gerarPdfOrcamento(orcamento) {
      "A CONTRATADA responde por danos causados por seus colaboradores durante a execução, com direito a contraditório e ampla defesa."],
   ];
 
-  // Condições específicas para manutenção corretiva
   const condicoesCorretiva = [
     ["Diagnóstico",
      "Serviço precedido de visita técnica para identificação da falha. O custo da visita de diagnóstico é cobrado independentemente da aprovação do reparo."],
@@ -488,8 +354,6 @@ export async function gerarPdfOrcamento(orcamento) {
      "A CONTRATADA responde pela integridade dos equipamentos até a entrega formal no local designado, com direito a contraditório e ampla defesa."],
   ];
 
-  // Se o orçamento tem condições personalizadas (editadas pelo usuário), usa elas.
-  // Caso contrário, usa as condições padrão da categoria + observações ao final.
   const condicoes = (condicoesServico && condicoesServico.length > 0)
     ? condicoesServico.map(c => [c.titulo, c.texto])
     : (() => {
@@ -503,6 +367,9 @@ export async function gerarPdfOrcamento(orcamento) {
         if (observacoes) padrao.push(["Observações", observacoes]);
         return padrao;
       })();
+
+  curY = garantirEspaco(doc, curY, 40);
+  curY = secaoHeader(doc, secNum++, "CONDIÇÕES DO SERVIÇO", curY);
 
   autoTable(doc, {
     startY: curY,
@@ -522,7 +389,7 @@ export async function gerarPdfOrcamento(orcamento) {
     },
     didParseCell(data) {
       if (data.column.index === 0) {
-        data.cell.styles.fillColor = BRAND;
+        data.cell.styles.fillColor = NAVY;
         data.cell.styles.textColor = [255, 255, 255];
         data.cell.styles.fontStyle = "bold";
         data.cell.styles.fontSize  = 8;
@@ -535,62 +402,45 @@ export async function gerarPdfOrcamento(orcamento) {
       }
     },
   });
+  curY = doc.lastAutoTable.finalY + 8;
 
-  curY = doc.lastAutoTable.finalY + 10;
+  // ── Seção: Condições Comerciais ──────────────────────────────────────────────
+  curY = garantirEspaco(doc, curY, 30);
+  curY = secaoHeader(doc, secNum++, "CONDIÇÕES COMERCIAIS", curY);
 
-  // ── Condições Comerciais ───────────────────────────────────────────────────
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(...BRAND);
-  doc.text("CONDIÇÕES COMERCIAIS", 14, curY);
-  curY += 4;
-
-  doc.setFillColor(232, 240, 248);
+  doc.setFillColor(...LIGHT);
   doc.rect(14, curY, 182, 16, "F");
-
-  const colW = 60;
+  const colW = 182 / 3;
   [
     ["PAGAMENTO", pagamento],
-    ["VALIDADE", validade],
     ["PRAZO DE EXECUÇÃO", prazoExecucao],
+    ["GARANTIA", garantia],
   ].forEach(([label, value], i) => {
     const x = 14 + i * colW + 4;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(7);
-    doc.setTextColor(...BRAND);
+    doc.setTextColor(...ORANGE);
     doc.text(label, x, curY + 5);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...DARK);
-    doc.text(value, x, curY + 13);
+    const valorLinhas = doc.splitTextToSize(value, colW - 6);
+    doc.text(valorLinhas.slice(0, 2), x, curY + 11);
   });
+  curY += 16 + 8;
 
-  curY += 26;
-
-  // ── Dados Bancários ────────────────────────────────────────────────────────
-  // exibirDadosBancarios controla apenas os dados da AVM (contratada).
-  // Dados do fornecedor sempre aparecem quando selecionado.
+  // ── Seção: Dados Bancários ───────────────────────────────────────────────────
   const temFornecedor = exibirDadosFornecedor && fornecedorNome;
   const mostrarSecaoBancaria = exibirDadosBancarios || temFornecedor;
 
   if (mostrarSecaoBancaria) {
-    if (curY > 240) { doc.addPage(); curY = 20; }
-
+    curY = garantirEspaco(doc, curY, 30);
     const tituloSecao = exibirDadosBancarios
       ? "DADOS BANCÁRIOS – CONTRATADA"
       : "DADOS BANCÁRIOS – FORNECEDOR";
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(...BRAND);
-    doc.text(tituloSecao, 14, curY);
-    curY += 2;
-    doc.setDrawColor(...BRAND);
-    doc.line(14, curY, 196, curY);
-    curY += 6;
+    curY = secaoHeader(doc, secNum++, tituloSecao, curY);
 
     if (exibirDadosBancarios && temFornecedor) {
-      // Mostra AVM + Fornecedor lado a lado
       autoTable(doc, {
         startY: curY,
         margin: { left: 14, right: 14 },
@@ -605,10 +455,7 @@ export async function gerarPdfOrcamento(orcamento) {
            fornecedorBanco || "—"],
         ],
         styles: { fontSize: 8, cellPadding: 3.5, textColor: MID, fillColor: LIGHT },
-        columnStyles: {
-          0: { cellWidth: "auto" },
-          1: { cellWidth: "auto" },
-        },
+        columnStyles: { 0: { cellWidth: "auto" }, 1: { cellWidth: "auto" } },
         didParseCell(data) {
           if (data.row.index === 0) {
             data.cell.styles.fontStyle = "bold";
@@ -617,7 +464,6 @@ export async function gerarPdfOrcamento(orcamento) {
         },
       });
     } else if (exibirDadosBancarios) {
-      // Mostra apenas AVM (sem fornecedor)
       autoTable(doc, {
         startY: curY,
         margin: { left: 14, right: 14 },
@@ -637,7 +483,6 @@ export async function gerarPdfOrcamento(orcamento) {
         },
       });
     } else {
-      // Mostra apenas o fornecedor (sem AVM)
       autoTable(doc, {
         startY: curY,
         margin: { left: 14, right: 14 },
@@ -656,21 +501,18 @@ export async function gerarPdfOrcamento(orcamento) {
         },
       });
     }
-
-    curY = doc.lastAutoTable.finalY + 16;
-  } else {
-    curY += 8;
+    curY = doc.lastAutoTable.finalY + 12;
   }
 
   // ── Assinaturas ────────────────────────────────────────────────────────────
-  if (curY > 250) { doc.addPage(); curY = 20; }
+  curY = garantirEspaco(doc, curY, 40);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.setTextColor(...BRAND);
+  doc.setTextColor(...NAVY);
   doc.text("ASSINATURAS", 14, curY);
   curY += 2;
-  doc.setDrawColor(...BRAND);
+  doc.setDrawColor(...NAVY);
   doc.line(14, curY, 196, curY);
   curY += 22;
 
@@ -700,12 +542,12 @@ export async function gerarPdfOrcamento(orcamento) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(...MID);
-  doc.text("Campinas, _____ de __________________ de 2026.", 105, curY, { align: "center" });
+  doc.text(`Campinas, ${dataEmissao}.`, 105, curY, { align: "center" });
 
   // ── Rodapé em todas as páginas ─────────────────────────────────────────────
-  drawPageFooter(doc);
+  drawPageFooter(doc, numero);
 
   // ── Salvar ─────────────────────────────────────────────────────────────────
-  const nomeArquivo = `Proposta_AVM_${numero}_${(clienteNome || "cliente").replace(/\s+/g, "_")}.pdf`;
+  const nomeArquivo = `Orcamento_AVM_${numero}_${(clienteNome || "cliente").replace(/\s+/g, "_")}.pdf`;
   doc.save(nomeArquivo);
 }

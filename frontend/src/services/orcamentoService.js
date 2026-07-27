@@ -1,6 +1,6 @@
 import {
   getDocs, getDoc, addDoc, updateDoc, deleteDoc,
-  query, orderBy, where, limit, serverTimestamp,
+  query, orderBy, where, limit, serverTimestamp, Timestamp,
 } from "firebase/firestore";
 import { orcamentosRef, orcamentoDoc } from "../config/firebasePaths";
 
@@ -100,4 +100,24 @@ export function fmtBRL(valor) {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency", currency: "BRL",
   }).format(valor ?? 0);
+}
+
+// ── Helpers de data: Timestamp do Firestore ↔ exibição / <input type="date"> ──
+// Aceita Timestamp do Firestore ({ seconds }) ou undefined.
+export function fmtData(ts) {
+  if (!ts?.seconds) return "—";
+  return new Date(ts.seconds * 1000).toLocaleDateString("pt-BR");
+}
+
+// yyyy-mm-dd para popular um <input type="date">. Sem ts, usa hoje.
+export function timestampParaInputDate(ts) {
+  const data = ts?.seconds ? new Date(ts.seconds * 1000) : new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
+}
+
+// yyyy-mm-dd (de um <input type="date">) para Timestamp do Firestore.
+// Usa meio-dia local para não sofrer com deslocamento de fuso na conversão.
+export function inputDateParaTimestamp(str) {
+  return Timestamp.fromDate(new Date(`${str}T12:00:00`));
 }
