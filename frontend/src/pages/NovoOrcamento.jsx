@@ -16,21 +16,24 @@ import { toast } from "sonner";
 
 const STEPS = ["Cliente", "Serviço", "Itens", "Revisão"];
 
-// Orçamentos antigos guardavam equipamento em tabelas estruturadas
-// (itensEquipamentos / opcoesEquipamento). Ao editar um deles pela primeira
-// vez com o novo formulário, convertemos isso num texto inicial em vez de
-// simplesmente descartar a informação.
-function textoEquipamentoLegado(orc) {
-  const partes = [];
-  const opcoes = orc.opcoesEquipamento || [];
-  if (opcoes.length > 0) {
-    const op = opcoes[orc.opcaoEquipamentoIdx ?? 0];
-    if (op) partes.push(`${op.nome} — ${fmtBRL(op.valorUnit)}`);
+// Orçamentos antigos guardavam equipamento em tabelas estruturadas com nomes
+// de campo diferentes (itensEquipamentos / opcoesEquipamento), e uma fase
+// intermediária usou um texto livre único (equipamentoTexto). Ao editar um
+// deles pela primeira vez com o formulário atual, convertemos para a lista
+// de itens atual em vez de descartar a informação.
+function itensEquipamentoLegado(orc) {
+  if (orc.itensEquipamentos?.length > 0 || orc.opcoesEquipamento?.length > 0) {
+    const opcoes = orc.opcoesEquipamento || [];
+    const opcaoSelecionada = opcoes[orc.opcaoEquipamentoIdx ?? 0];
+    return [
+      ...(opcaoSelecionada ? [{ descricao: opcaoSelecionada.nome, qtd: 1, vlUnit: opcaoSelecionada.valorUnit }] : []),
+      ...(orc.itensEquipamentos || []),
+    ];
   }
-  (orc.itensEquipamentos || []).forEach((i) => {
-    partes.push(`${i.descricao || i.desc || ""} (${i.qtd ?? 1}x ${fmtBRL(i.vlUnit)})`);
-  });
-  return partes.join("\n");
+  if (orc.equipamentoTexto) {
+    return [{ descricao: orc.equipamentoTexto, qtd: 1, vlUnit: 0 }];
+  }
+  return [];
 }
 
 export default function NovoOrcamento() {
@@ -44,7 +47,8 @@ export default function NovoOrcamento() {
   const [carregando, setCarregando]           = useState(modoEditar);
   const [cliente, setCliente]                 = useState(null);
   const [servico, setServico]                 = useState(null);
-  const [equipamentoTexto, setEquipamentoTexto] = useState("");
+  const [equipamentoItens, setEquipamentoItens] = useState([]);
+  const [equipApenasRef, setEquipApenasRef]     = useState(false);
   const [itensInst, setItensInst]             = useState([]);
   const [dataEmissao, setDataEmissao]         = useState(() => timestampParaInputDate(null));
   const [precoFinal, setPrecoFinal]           = useState("");
@@ -78,7 +82,8 @@ export default function NovoOrcamento() {
           telefone: orc.clienteTelefone || "",
         });
         setServico({ id: orc.servicoId, nome: orc.servicoNome });
-        setEquipamentoTexto(orc.equipamentoTexto || textoEquipamentoLegado(orc));
+        setEquipamentoItens(orc.equipamentoItens?.length > 0 ? orc.equipamentoItens : itensEquipamentoLegado(orc));
+        setEquipApenasRef(orc.equipApenasRef ?? false);
         setItensInst(orc.itensInstalacao || []);
         setDataEmissao(timestampParaInputDate(orc.dataEmissao || orc.criadoEm));
         setPrecoFinal(orc.precoFinalDigitado ?? "");
@@ -114,7 +119,10 @@ export default function NovoOrcamento() {
 
   function onSelectServico(s) {
     setServico(s);
-    setEquipamentoTexto((s.materiais || []).map((m) => m.nome).filter(Boolean).join(", "));
+    setEquipamentoItens(
+      (s.materiais || []).map((m) => ({ descricao: m.nome || "", qtd: m.qtd || 1, vlUnit: m.valorUnit || 0 }))
+    );
+    setEquipApenasRef(false);
     setItensInst(
       s.maoDeObra > 0
         ? [{ descricao: s.nome, qtd: 1, vlUnit: s.maoDeObra }]
@@ -137,8 +145,9 @@ export default function NovoOrcamento() {
   async function handleSalvar(rascunho = false) {
     setSalvando(true);
     try {
+      const totalEquip = equipApenasRef ? 0 : equipamentoItens.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
       const totalInst  = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
-      const totalGeral = parseFloat(precoFinal) || totalInst;
+      const totalGeral = parseFloat(precoFinal) || (totalEquip + totalInst);
 
       const dados = {
         clienteId: cliente.id,           clienteNome: cliente.nome,
@@ -147,15 +156,16 @@ export default function NovoOrcamento() {
         clienteTelefone: cliente.telefone || "",
         servicoId: servico.id, servicoNome: servico.nome,
         descricaoObjeto,
-        equipamentoTexto,
+        equipamentoItens,
+        equipApenasRef,
         itensInstalacao: itensInst,
-        // Zera os campos estruturados antigos — a partir daqui o equipamento
-        // é sempre descrito em texto livre (equipamentoTexto).
+        // Zera os campos estruturados antigos/intermediários de equipamento —
+        // a partir daqui o formato atual é sempre equipamentoItens.
+        equipamentoTexto: "",
         itensEquipamentos: [],
         opcoesEquipamento: [],
         opcaoEquipamentoSelecionada: null,
-        equipApenasRef: false,
-        calculo: { totalInstalacao: totalInst, totalGeral },
+        calculo: { totalEquipamentos: totalEquip, totalInstalacao: totalInst, totalGeral },
         precoFinal: totalGeral,
         precoFinalDigitado: precoFinal,
         dataEmissao: inputDateParaTimestamp(dataEmissao),
@@ -236,17 +246,17 @@ export default function NovoOrcamento() {
         {step === 2 && (
           <StepItens
             eId={eId}
-            equipamentoTexto={equipamentoTexto} setEquipamentoTexto={setEquipamentoTexto}
+            equipamentoItens={equipamentoItens} setEquipamentoItens={setEquipamentoItens}
+            equipApenasRef={equipApenasRef} setEquipApenasRef={setEquipApenasRef}
             itensInst={itensInst}   setItensInst={setItensInst}
-            servicoCategoria={servicoCategoria}
             onAvancar={() => setStep(3)}
             onVoltar={() => setStep(1)} />
         )}
         {step === 3 && (
           <StepRevisao
             eId={eId}
-            cliente={cliente} servico={servico}
-            equipamentoTexto={equipamentoTexto} itensInst={itensInst}
+            cliente={cliente} servico={servico} setServico={setServico}
+            equipamentoItens={equipamentoItens} equipApenasRef={equipApenasRef} itensInst={itensInst}
             precoFinal={precoFinal} processo={processo} observacoes={observacoes}
             descricaoObjeto={descricaoObjeto} garantia={garantia}
             pagamento={pagamento} validade={validade} prazoExecucao={prazoExecucao}
@@ -577,14 +587,14 @@ function ItemSection({ label, items, setter, headerExtra }) {
 }
 
 // ── Step 3: Itens ──────────────────────────────────────────────────────────
-function StepItens({ eId, equipamentoTexto, setEquipamentoTexto, itensInst, setItensInst, onAvancar, onVoltar }) {
+function StepItens({ eId, equipamentoItens, setEquipamentoItens, equipApenasRef, setEquipApenasRef, itensInst, setItensInst, onAvancar, onVoltar }) {
   const [modalCatalogo, setModalCatalogo] = useState(false);
-  const totalInst = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
+  const totalEquip = equipApenasRef ? 0 : equipamentoItens.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
+  const totalInst  = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
 
   function handleAdicionarDoCatalogo(item) {
-    const linha = `${item.descricao} — ${item.qtd}x ${fmtBRL(item.vlUnit)}`;
-    setEquipamentoTexto((prev) => (prev ? `${prev}\n${linha}` : linha));
-    toast.success("Adicionado à descrição! Você pode ajustar o texto livremente.");
+    setEquipamentoItens((prev) => [...prev, item]);
+    toast.success("Equipamento adicionado! Selecione outro ou feche o catálogo.");
   }
 
   return (
@@ -608,34 +618,38 @@ function StepItens({ eId, equipamentoTexto, setEquipamentoTexto, itensInst, setI
         </button>
       </div>
 
-      <div className="mb-5">
-        <label className="text-xs font-semibold text-gray-700 uppercase tracking-wide block mb-2">
-          Equipamento / Material
-        </label>
-        <textarea
-          rows={4}
-          value={equipamentoTexto}
-          onChange={(e) => setEquipamentoTexto(e.target.value)}
-          placeholder="Descreva o(s) equipamento(s) ou material(is) do orçamento. Ex: Split Hi-Wall Springer 12.000 BTU/h — 1un."
-          className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D97706] resize-none"
-        />
-        <p className="text-[10px] text-gray-400 mt-1">
-          Texto livre — use o Catálogo Uniar para consultar preços e adicionar aqui. Se quiser
-          valores detalhados por item (como peças com preço unitário), use a tabela abaixo.
+      <ItemSection
+        label="Equipamento / Material" items={equipamentoItens} setter={setEquipamentoItens}
+        headerExtra={
+          <button
+            onClick={() => setEquipApenasRef(!equipApenasRef)}
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded-lg border transition-colors ${
+              equipApenasRef
+                ? "bg-amber-50 border-amber-300 text-amber-700"
+                : "bg-gray-50 border-gray-200 text-gray-500 hover:border-gray-300"
+            }`}
+          >
+            {equipApenasRef ? "⚠ Só opções — não soma" : "Incluir no total"}
+          </button>
+        }
+      />
+      {equipApenasRef && (
+        <p className="text-[10px] text-amber-600 -mt-4 mb-4">
+          Itens listados como opções para o cliente escolher — <strong>não somam no total</strong>.
         </p>
-      </div>
+      )}
 
-      <ItemSection label="Materiais e Serviços (com valores)" items={itensInst} setter={setItensInst} />
+      <ItemSection label="Materiais e Serviços" items={itensInst} setter={setItensInst} />
 
       <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex justify-between items-center mb-5">
         <span className="text-sm font-semibold text-amber-800">Total dos itens</span>
-        <span className="text-lg font-bold text-amber-700">{fmtBRL(totalInst)}</span>
+        <span className="text-lg font-bold text-amber-700">{fmtBRL(totalEquip + totalInst)}</span>
       </div>
 
       <div className="flex gap-3">
         <button onClick={onVoltar} className="text-sm text-gray-500 font-medium px-4 py-2.5">← Voltar</button>
         <button onClick={onAvancar}
-          disabled={!equipamentoTexto.trim() && itensInst.length === 0}
+          disabled={equipamentoItens.length === 0 && itensInst.length === 0}
           className="flex-1 bg-[#14213D] text-white py-2.5 rounded-xl text-sm font-semibold disabled:opacity-50">
           Revisar →
         </button>
@@ -876,7 +890,7 @@ function Row({ label, value }) {
 
 function StepRevisao({
   eId,
-  cliente, servico, equipamentoTexto, itensInst,
+  cliente, servico, setServico, equipamentoItens, equipApenasRef, itensInst,
   precoFinal, processo, observacoes,
   descricaoObjeto, garantia, pagamento, validade, prazoExecucao,
   dataEmissao, onDataEmissaoChange,
@@ -893,8 +907,9 @@ function StepRevisao({
   servicoCategoria, servicoNome,
   onVoltar, onRascunho, onFinalizar, salvando, modoEditar,
 }) {
-  const totalInst     = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
-  const totalSugerido = totalInst;
+  const totalEquip     = equipApenasRef ? 0 : equipamentoItens.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
+  const totalInst      = itensInst.reduce((s, i) => s + (i.vlUnit || 0) * (i.qtd || 1), 0);
+  const totalSugerido  = totalEquip + totalInst;
 
   return (
     <div>
@@ -908,8 +923,23 @@ function StepRevisao({
         {cliente?.telefone && <Row label="Telefone" value={cliente.telefone} />}
         {cliente?.endereco && <Row label="Endereço" value={cliente.endereco} />}
         <div className="border-t border-gray-100 pt-2 mt-1">
-          <Row label="Serviço" value={servico?.nome} />
-          {equipamentoTexto && <Row label="Equipamento/Material" value={equipamentoTexto} />}
+          <div className="flex justify-between items-center py-0.5 gap-2">
+            <span className="text-gray-500 flex-shrink-0">Serviço</span>
+            <input
+              type="text"
+              value={servico?.nome || ""}
+              onChange={(e) => setServico((prev) => ({ ...prev, nome: e.target.value }))}
+              className="text-right font-semibold text-gray-800 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#D97706] focus:outline-none text-sm py-0.5 min-w-0 flex-1"
+            />
+          </div>
+          {equipamentoItens.length > 0 && (
+            <Row
+              label={`Equipamento${equipApenasRef ? " (opções)" : ""}`}
+              value={equipApenasRef
+                ? `${equipamentoItens.length} opção(ões) — não soma`
+                : `${equipamentoItens.length} item(s) — ${fmtBRL(totalEquip)}`}
+            />
+          )}
           <Row label="Materiais e Serviços" value={`${itensInst.length} item(s) — ${fmtBRL(totalInst)}`} />
         </div>
       </div>

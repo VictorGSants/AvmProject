@@ -82,6 +82,7 @@ export async function gerarPdfOrcamento(orcamento) {
     servicoNome = "",
     descricaoObjeto = "",
     equipamentoTexto = "",
+    equipamentoItens = [],
     itensEquipamentos = [],
     itensInstalacao   = [],
     opcaoEquipamentoSelecionada = null,
@@ -197,14 +198,14 @@ export async function gerarPdfOrcamento(orcamento) {
     startY: curY,
     margin: { left: 14, right: 14 },
     body: linhasCliente,
-    styles: { fontSize: 8.5, cellPadding: 3, textColor: DARK, lineWidth: 0 },
+    styles: { fontSize: 8.5, cellPadding: 2.5, textColor: DARK, lineWidth: 0 },
     columnStyles: {
       0: { cellWidth: 50, fontStyle: "bold", textColor: NAVY },
       1: { cellWidth: "auto" },
     },
     alternateRowStyles: { fillColor: LIGHT },
   });
-  curY = doc.lastAutoTable.finalY + 8;
+  curY = doc.lastAutoTable.finalY + 5;
 
   // ── Seção: Objeto do Orçamento ───────────────────────────────────────────────
   if (descricaoObjeto) {
@@ -215,48 +216,41 @@ export async function gerarPdfOrcamento(orcamento) {
     doc.setTextColor(...MID);
     const linhas = doc.splitTextToSize(descricaoObjeto, 182);
     doc.text(linhas, 14, curY);
-    curY += linhas.length * 4.5 + 8;
+    curY += doc.getTextDimensions(linhas.join("\n")).h + 5;
   }
 
-  // ── Seção: Equipamento / Material ────────────────────────────────────────────
-  if (equipamentoTexto) {
-    curY = garantirEspaco(doc, curY);
+  // ── Seção: Equipamento / Material (tabela — pode ou não somar no total) ─────
+  // equipamentoItens é o formato atual; itensEquipamentos/opcaoEquipamentoSelecionada
+  // (orçamentos antigos) e equipamentoTexto (fase intermediária, só texto livre)
+  // são convertidos aqui só para exibição.
+  let itensEquip = equipamentoItens.length > 0
+    ? equipamentoItens
+    : [
+        ...(itensEquipamentos || []),
+        ...(opcaoEquipamentoSelecionada
+          ? [{ descricao: opcaoEquipamentoSelecionada.nome, qtd: 1, vlUnit: opcaoEquipamentoSelecionada.valorUnit }]
+          : []),
+      ];
+  if (itensEquip.length === 0 && equipamentoTexto) {
+    itensEquip = [{ descricao: equipamentoTexto, qtd: 1, vlUnit: 0 }];
+  }
+
+  if (itensEquip.length > 0) {
+    curY = garantirEspaco(doc, curY, 40);
     curY = secaoHeader(doc, secNum++, "EQUIPAMENTO / MATERIAL", curY);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8.5);
-    doc.setTextColor(...MID);
-    const linhasEquip = doc.splitTextToSize(equipamentoTexto, 182);
-    doc.text(linhasEquip, 14, curY);
-    curY += linhasEquip.length * 4.5 + 8;
-  }
-
-  // ── Seção: Relação de Materiais e Serviços ───────────────────────────────────
-  // itensInstalacao é a tabela editável atual; itensEquipamentos e
-  // opcaoEquipamentoSelecionada só existem em orçamentos antigos (compatibilidade).
-  const itensLegado = (itensEquipamentos || []).map((i) => ({ ...i, ref: equipApenasRef }));
-  const itemOpcaoLegado = opcaoEquipamentoSelecionada
-    ? [{ descricao: opcaoEquipamentoSelecionada.nome, qtd: 1, vlUnit: opcaoEquipamentoSelecionada.valorUnit, ref: equipApenasRef }]
-    : [];
-  const itensCombinados = [...itensInstalacao, ...itensLegado, ...itemOpcaoLegado];
-  const totalGeral = calculo.totalGeral ?? orcamento.precoFinal ?? 0;
-
-  curY = garantirEspaco(doc, curY, 50);
-
-  if (itensCombinados.length > 0) {
-    curY = secaoHeader(doc, secNum++, "RELAÇÃO DE MATERIAIS E SERVIÇOS", curY);
     autoTable(doc, {
       startY: curY,
       margin: { left: 14, right: 14 },
       head: [["#", "DESCRIÇÃO", "UNID.", "QTD.", "VLR. UNIT.", "VLR. TOTAL"]],
-      body: itensCombinados.map((item, i) => [
+      body: itensEquip.map((item, i) => [
         String(i + 1),
-        (item.descricao || item.desc || "—") + (item.ref ? " (ref.)" : ""),
+        item.descricao || item.desc || "—",
         "un.",
         String(item.qtd ?? 1),
         fmt(item.vlUnit),
-        item.ref ? "—" : fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
+        equipApenasRef ? "—" : fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
       ]),
-      styles: { fontSize: 7.5, cellPadding: 2.5, textColor: DARK },
+      styles: { fontSize: 7.5, cellPadding: 2.2, textColor: DARK },
       headStyles: { fillColor: NAVY, textColor: 255, fontStyle: "bold", fontSize: 8 },
       alternateRowStyles: { fillColor: LIGHT },
       columnStyles: {
@@ -268,8 +262,49 @@ export async function gerarPdfOrcamento(orcamento) {
         5: { cellWidth: 28, halign: "right" },
       },
     });
-    curY = doc.lastAutoTable.finalY + 3;
-  } else {
+    curY = doc.lastAutoTable.finalY + 2;
+    if (equipApenasRef) {
+      doc.setFont("helvetica", "italic");
+      doc.setFontSize(7);
+      doc.setTextColor(...ORANGE);
+      doc.text("* Opções apresentadas para escolha do contratante — não somadas ao total geral.", 14, curY + 3);
+      curY += 6;
+    }
+    curY += 5;
+  }
+
+  // ── Seção: Relação de Materiais e Serviços ───────────────────────────────────
+  const totalGeral = calculo.totalGeral ?? orcamento.precoFinal ?? 0;
+
+  if (itensInstalacao.length > 0) {
+    curY = garantirEspaco(doc, curY, 40);
+    curY = secaoHeader(doc, secNum++, "RELAÇÃO DE MATERIAIS E SERVIÇOS", curY);
+    autoTable(doc, {
+      startY: curY,
+      margin: { left: 14, right: 14 },
+      head: [["#", "DESCRIÇÃO", "UNID.", "QTD.", "VLR. UNIT.", "VLR. TOTAL"]],
+      body: itensInstalacao.map((item, i) => [
+        String(i + 1),
+        item.descricao || item.desc || "—",
+        "un.",
+        String(item.qtd ?? 1),
+        fmt(item.vlUnit),
+        fmt((item.vlUnit ?? 0) * (item.qtd ?? 1)),
+      ]),
+      styles: { fontSize: 7.5, cellPadding: 2.2, textColor: DARK },
+      headStyles: { fillColor: NAVY, textColor: 255, fontStyle: "bold", fontSize: 8 },
+      alternateRowStyles: { fillColor: LIGHT },
+      columnStyles: {
+        0: { cellWidth: 8 },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 14, halign: "center" },
+        3: { cellWidth: 14, halign: "right" },
+        4: { cellWidth: 26, halign: "right" },
+        5: { cellWidth: 28, halign: "right" },
+      },
+    });
+    curY = doc.lastAutoTable.finalY + 5;
+  } else if (itensEquip.length === 0) {
     curY = secaoHeader(doc, secNum++, "VALOR DO ORÇAMENTO", curY);
   }
 
@@ -282,7 +317,7 @@ export async function gerarPdfOrcamento(orcamento) {
   doc.text("TOTAL GERAL DO ORÇAMENTO", 18, curY + 6.5);
   doc.setFontSize(11.5);
   doc.text(fmt(totalGeral), 192, curY + 6.7, { align: "right" });
-  curY += 10 + 8;
+  curY += 10 + 5;
 
   // ── Seção: Condições do Serviço ──────────────────────────────────────────────
   const ehFornecimento = servicoCategoria === "fornecimento";
@@ -402,7 +437,7 @@ export async function gerarPdfOrcamento(orcamento) {
       }
     },
   });
-  curY = doc.lastAutoTable.finalY + 8;
+  curY = doc.lastAutoTable.finalY + 5;
 
   // ── Seção: Condições Comerciais ──────────────────────────────────────────────
   curY = garantirEspaco(doc, curY, 30);
@@ -427,7 +462,7 @@ export async function gerarPdfOrcamento(orcamento) {
     const valorLinhas = doc.splitTextToSize(value, colW - 6);
     doc.text(valorLinhas.slice(0, 2), x, curY + 11);
   });
-  curY += 16 + 8;
+  curY += 16 + 5;
 
   // ── Seção: Dados Bancários ───────────────────────────────────────────────────
   const temFornecedor = exibirDadosFornecedor && fornecedorNome;
@@ -501,7 +536,7 @@ export async function gerarPdfOrcamento(orcamento) {
         },
       });
     }
-    curY = doc.lastAutoTable.finalY + 12;
+    curY = doc.lastAutoTable.finalY + 8;
   }
 
   // ── Assinaturas ────────────────────────────────────────────────────────────
