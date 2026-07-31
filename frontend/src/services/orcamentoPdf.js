@@ -216,7 +216,10 @@ export async function gerarPdfOrcamento(orcamento) {
     doc.setTextColor(...MID);
     const linhas = doc.splitTextToSize(descricaoObjeto, 182);
     doc.text(linhas, 14, curY);
-    curY += doc.getTextDimensions(linhas.join("\n")).h + 5;
+    // Passar o array (não uma string unida por \n): getTextDimensions só conta
+    // múltiplas linhas quando recebe um array — com string ele trata tudo como
+    // uma linha só e a altura fica subestimada, cortando o texto seguinte.
+    curY += doc.getTextDimensions(linhas).h + 5;
   }
 
   // ── Seção: Equipamento / Material (tabela — pode ou não somar no total) ─────
@@ -389,19 +392,22 @@ export async function gerarPdfOrcamento(orcamento) {
      "A CONTRATADA responde pela integridade dos equipamentos até a entrega formal no local designado, com direito a contraditório e ampla defesa."],
   ];
 
+  // condicoesServico normalmente já vem preenchido (a tela pré-popula com o
+  // padrão da categoria), então a maioria dos orçamentos cai no primeiro
+  // ramo — por isso "observações" precisa ser adicionado fora do ternário,
+  // senão nunca aparece no PDF.
   const condicoes = (condicoesServico && condicoesServico.length > 0)
     ? condicoesServico.map(c => [c.titulo, c.texto])
-    : (() => {
-        const padrao = ehFornecimento
-          ? condicoesFornecimento
-          : ehCorretiva
-            ? condicoesCorretiva
-            : ehManutencao
-              ? condicoesManutencao
-              : condicoesInstalacao;
-        if (observacoes) padrao.push(["Observações", observacoes]);
-        return padrao;
-      })();
+    : (ehFornecimento
+        ? condicoesFornecimento
+        : ehCorretiva
+          ? condicoesCorretiva
+          : ehManutencao
+            ? condicoesManutencao
+            : condicoesInstalacao);
+  if (observacoes && !condicoes.some(([titulo]) => titulo === "Observações")) {
+    condicoes.push(["Observações", observacoes]);
+  }
 
   curY = garantirEspaco(doc, curY, 40);
   curY = secaoHeader(doc, secNum++, "CONDIÇÕES DO SERVIÇO", curY);

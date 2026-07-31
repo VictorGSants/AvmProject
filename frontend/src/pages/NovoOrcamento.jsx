@@ -46,6 +46,7 @@ export default function NovoOrcamento() {
   const [salvando, setSalvando]               = useState(false);
   const [carregando, setCarregando]           = useState(modoEditar);
   const [cliente, setCliente]                 = useState(null);
+  const [endereco, setEndereco]               = useState("");
   const [servico, setServico]                 = useState(null);
   const [equipamentoItens, setEquipamentoItens] = useState([]);
   const [equipApenasRef, setEquipApenasRef]     = useState(false);
@@ -81,6 +82,7 @@ export default function NovoOrcamento() {
           email: orc.clienteEmail  || "", endereco: orc.clienteEndereco || "",
           telefone: orc.clienteTelefone || "",
         });
+        setEndereco(orc.clienteEndereco || "");
         setServico({ id: orc.servicoId, nome: orc.servicoNome });
         setEquipamentoItens(orc.equipamentoItens?.length > 0 ? orc.equipamentoItens : itensEquipamentoLegado(orc));
         setEquipApenasRef(orc.equipApenasRef ?? false);
@@ -152,7 +154,7 @@ export default function NovoOrcamento() {
       const dados = {
         clienteId: cliente.id,           clienteNome: cliente.nome,
         clienteCnpj: cliente.cnpj       || "", clienteCpf: cliente.cpf          || "",
-        clienteEmail: cliente.email     || "", clienteEndereco: cliente.endereco || "",
+        clienteEmail: cliente.email     || "", clienteEndereco: endereco || "",
         clienteTelefone: cliente.telefone || "",
         servicoId: servico.id, servicoNome: servico.nome,
         descricaoObjeto,
@@ -236,7 +238,7 @@ export default function NovoOrcamento() {
       <main className="flex-grow p-4 max-w-lg mx-auto w-full">
         {step === 0 && (
           <StepCliente eId={eId} clienteSelecionado={cliente}
-            onSelect={(c) => { setCliente(c); setStep(1); }} />
+            onSelect={(c) => { setCliente(c); setEndereco(c.endereco || ""); setStep(1); }} />
         )}
         {step === 1 && (
           <StepServico eId={eId} servicoSelecionado={servico}
@@ -256,6 +258,7 @@ export default function NovoOrcamento() {
           <StepRevisao
             eId={eId}
             cliente={cliente} servico={servico} setServico={setServico}
+            endereco={endereco} onEnderecoChange={setEndereco}
             equipamentoItens={equipamentoItens} equipApenasRef={equipApenasRef} itensInst={itensInst}
             precoFinal={precoFinal} processo={processo} observacoes={observacoes}
             descricaoObjeto={descricaoObjeto} garantia={garantia}
@@ -890,7 +893,7 @@ function Row({ label, value }) {
 
 function StepRevisao({
   eId,
-  cliente, servico, setServico, equipamentoItens, equipApenasRef, itensInst,
+  cliente, servico, setServico, endereco, onEnderecoChange, equipamentoItens, equipApenasRef, itensInst,
   precoFinal, processo, observacoes,
   descricaoObjeto, garantia, pagamento, validade, prazoExecucao,
   dataEmissao, onDataEmissaoChange,
@@ -921,7 +924,16 @@ function StepRevisao({
         {cliente?.cpf      && <Row label="CPF"      value={cliente.cpf} />}
         {cliente?.email    && <Row label="E-mail"   value={cliente.email} />}
         {cliente?.telefone && <Row label="Telefone" value={cliente.telefone} />}
-        {cliente?.endereco && <Row label="Endereço" value={cliente.endereco} />}
+        <div className="flex justify-between items-center py-0.5 gap-2">
+          <span className="text-gray-500 flex-shrink-0">Endereço</span>
+          <input
+            type="text"
+            value={endereco}
+            onChange={(e) => onEnderecoChange(e.target.value)}
+            placeholder={cliente?.endereco ? "" : "Rua, número, bairro, cidade"}
+            className="text-right font-semibold text-gray-800 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-[#D97706] focus:outline-none text-sm py-0.5 min-w-0 flex-1"
+          />
+        </div>
         <div className="border-t border-gray-100 pt-2 mt-1">
           <div className="flex justify-between items-center py-0.5 gap-2">
             <span className="text-gray-500 flex-shrink-0">Serviço</span>
