@@ -13,7 +13,7 @@ import { toast } from "sonner";
 const EMPTY = {
   nome: "", categoria: "instalacao", descricao: "",
   maoDeObra: 0, basePrice: 0, margemLucro: 30,
-  valorPorMetroTubulacao: 35, garantia: "12 meses peças / 36 meses compressor",
+  valorPorMetroTubulacao: 35, garantia: "12 meses",
   materiais: [],
   opcoesEquipamento: [],
 };

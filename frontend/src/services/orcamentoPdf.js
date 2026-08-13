@@ -88,10 +88,10 @@ export async function gerarPdfOrcamento(orcamento) {
     opcaoEquipamentoSelecionada = null,
     equipApenasRef    = false,
     calculo = {},
-    garantia         = "12 meses peças / 36 meses compressor",
+    garantia         = "12 meses",
     pagamento        = "15 DDL",
-    validade         = "30 dias",
-    prazoExecucao    = "30 dias",
+    validade         = "5 dias",
+    prazoExecucao    = "15 dias",
     observacoes      = "",
     exibirDadosFornecedor = false,
     fornecedor       = null,
@@ -189,7 +189,7 @@ export async function gerarPdfOrcamento(orcamento) {
   if (contatoLinha)   linhasCliente.push(["Contato", contatoLinha]);
   linhasCliente.push(["Local de Execução", clienteEndereco || "—"]);
   if (responsavel)    linhasCliente.push(["Responsável pelo setor", responsavel]);
-  linhasCliente.push(["Validade do Orçamento", validade ? `${validade}, a partir da data de emissão` : "—"]);
+  linhasCliente.push(["Validade do Orçamento", validade || "—"]);
   if (processo)        linhasCliente.push(["Processo", processo]);
   if (servicoNome)      linhasCliente.push(["Serviço", servicoNome]);
 
@@ -265,13 +265,35 @@ export async function gerarPdfOrcamento(orcamento) {
         5: { cellWidth: 28, halign: "right" },
       },
     });
-    curY = doc.lastAutoTable.finalY + 2;
+    curY = doc.lastAutoTable.finalY + 3;
+
     if (equipApenasRef) {
       doc.setFont("helvetica", "italic");
       doc.setFontSize(7);
       doc.setTextColor(...ORANGE);
       doc.text("* Opções apresentadas para escolha do contratante — não somadas ao total geral.", 14, curY + 3);
       curY += 6;
+    } else {
+      curY = garantirEspaco(doc, curY, 18);
+      const totalEquipamento = calculo.totalEquipamentos
+        ?? itensEquip.reduce((s, i) => s + (i.vlUnit ?? 0) * (i.qtd ?? 1), 0);
+      doc.setFillColor(...NAVY);
+      doc.rect(14, curY, 182, 8, "F");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.text("TOTAL EQUIPAMENTO", 18, curY + 5.3);
+      doc.setFontSize(9.5);
+      doc.text(fmt(totalEquipamento), 192, curY + 5.4, { align: "right" });
+      curY += 8 + 3;
+    }
+
+    if (fornecedorNome) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(...MID);
+      doc.text(`Equipamentos fornecidos por: ${fornecedorNome}`, 14, curY);
+      curY += 5;
     }
     curY += 5;
   }
@@ -306,7 +328,20 @@ export async function gerarPdfOrcamento(orcamento) {
         5: { cellWidth: 28, halign: "right" },
       },
     });
-    curY = doc.lastAutoTable.finalY + 5;
+    curY = doc.lastAutoTable.finalY + 3;
+
+    curY = garantirEspaco(doc, curY, 18);
+    const totalMaoDeObra = calculo.totalInstalacao
+      ?? itensInstalacao.reduce((s, i) => s + (i.vlUnit ?? 0) * (i.qtd ?? 1), 0);
+    doc.setFillColor(...NAVY);
+    doc.rect(14, curY, 182, 8, "F");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.text("TOTAL MÃO DE OBRA / SERVIÇOS", 18, curY + 5.3);
+    doc.setFontSize(9.5);
+    doc.text(fmt(totalMaoDeObra), 192, curY + 5.4, { align: "right" });
+    curY += 8 + 5;
   } else if (itensEquip.length === 0) {
     curY = secaoHeader(doc, secNum++, "VALOR DO ORÇAMENTO", curY);
   }

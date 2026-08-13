@@ -17,12 +17,12 @@ const SERVICOS_PADRAO = [
   {
     nome: "Instalação Split Hi-Wall 9.000 BTU",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 9.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 9.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento.",
     maoDeObra: 350,
     basePrice: 350,
     margemLucro: 30,
     valorPorMetroTubulacao: 35,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Suporte metálico", qtd: 1, valorUnit: 45 },
       { nome: "Abraçadeira", qtd: 4, valorUnit: 3 },
@@ -33,12 +33,12 @@ const SERVICOS_PADRAO = [
   {
     nome: "Instalação Split Hi-Wall 12.000 BTU",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 12.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 12.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento.",
     maoDeObra: 400,
     basePrice: 400,
     margemLucro: 30,
     valorPorMetroTubulacao: 35,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Suporte metálico", qtd: 1, valorUnit: 45 },
       { nome: "Abraçadeira", qtd: 4, valorUnit: 3 },
@@ -49,12 +49,12 @@ const SERVICOS_PADRAO = [
   {
     nome: "Instalação Split Hi-Wall 18.000 BTU",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 18.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 18.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento.",
     maoDeObra: 480,
     basePrice: 480,
     margemLucro: 30,
     valorPorMetroTubulacao: 38,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Suporte metálico reforçado", qtd: 1, valorUnit: 65 },
       { nome: "Abraçadeira", qtd: 6, valorUnit: 3 },
@@ -65,12 +65,12 @@ const SERVICOS_PADRAO = [
   {
     nome: "Instalação Split Hi-Wall 24.000 BTU",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 24.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall 24.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento.",
     maoDeObra: 550,
     basePrice: 550,
     margemLucro: 30,
     valorPorMetroTubulacao: 40,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Suporte metálico reforçado", qtd: 1, valorUnit: 75 },
       { nome: "Abraçadeira", qtd: 6, valorUnit: 3 },
@@ -81,12 +81,12 @@ const SERVICOS_PADRAO = [
   {
     nome: "Instalação Split Piso-Teto 36.000 BTU",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto 36.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno PVC, bomba de condensado, vácuo, carga de gás R-410A e testes.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto 36.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno PVC, bomba de condensado, vácuo, carga de gás refrigerante e testes.",
     maoDeObra: 1200,
     basePrice: 1200,
     margemLucro: 28,
     valorPorMetroTubulacao: 45,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Suporte metálico", qtd: 1, valorUnit: 120 },
       { nome: "Bomba de condensado Elgin FP2210", qtd: 1, valorUnit: 180 },
@@ -97,12 +97,12 @@ const SERVICOS_PADRAO = [
   {
     nome: "Instalação Split Piso-Teto 60.000 BTU",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto 60.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno PVC, bomba de condensado, vácuo, carga de gás R-410A e testes.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto 60.000 BTU/h, incluindo suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno PVC, bomba de condensado, vácuo, carga de gás refrigerante e testes.",
     maoDeObra: 2650,
     basePrice: 2650,
     margemLucro: 28,
     valorPorMetroTubulacao: 50,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Suporte metálico", qtd: 1, valorUnit: 150 },
       { nome: "Bomba de condensado Elgin FP2210", qtd: 1, valorUnit: 220 },

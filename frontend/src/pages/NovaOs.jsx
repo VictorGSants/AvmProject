@@ -3,15 +3,20 @@ import { useParams } from "react-router-dom";
 import Header from "../components/Header";
 import Modal from "../components/Modal";
 import { getOrdens, avaliarOS } from "../services/os/osService";
+import { listarFotosOS } from "../services/os/osFotoService";
+import VisualizadorFoto from "../components/os/VisualizadorFoto";
 import {
   ClipboardList, User, MapPin, Wrench, Package,
   Car, Calendar, CheckCircle, ChevronRight, Loader2,
-  Star, DollarSign, MessageSquare, TrendingUp, BadgeCheck, Users,
+  Star, DollarSign, MessageSquare, TrendingUp, BadgeCheck, Users, Clock8,
 } from "lucide-react";
 
 const LABEL_DESEMPENHO = ["", "Abaixo do esperado", "Regular", "Bom", "Muito bom", "Excelente"];
 const COR_DESEMPENHO   = ["", "text-red-500", "text-orange-400", "text-yellow-500", "text-blue-500", "text-green-500"];
 const PRESETS_COMISSAO = [5, 8, 10, 12, 15, 20];
+const LABEL_CATEGORIA_FOTO = { antes: "Antes", durante: "Durante", depois: "Depois" };
+// OS antigas (anteriores a este módulo) não têm campo status — trata como concluída.
+const osConcluida = os => (os.status ?? "concluido") === "concluido";
 
 function formatarData(ts) {
   if (!ts) return "—";
@@ -169,10 +174,17 @@ function OsCard({ os, onClick }) {
           <p className="text-sm font-semibold text-gray-800 mt-1.5">{os.tipoServico || "Serviço"}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <div className="flex items-center gap-1 text-green-600">
-            <CheckCircle size={14} />
-            <span className="text-xs font-medium">Concluída</span>
-          </div>
+          {osConcluida(os) ? (
+            <div className="flex items-center gap-1 text-green-600">
+              <CheckCircle size={14} />
+              <span className="text-xs font-medium">Concluída</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 text-amber-600">
+              <Clock8 size={14} />
+              <span className="text-xs font-medium">Em andamento</span>
+            </div>
+          )}
           {os.avaliada && (
             <div className="flex items-center gap-1 text-yellow-500">
               <BadgeCheck size={13} />
@@ -244,10 +256,19 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
   const [etapa, setEtapa] = useState("detalhe");
   const [salvando, setSalvando] = useState(false);
   const [avForm, setAvForm] = useState({ valorServico: "", tecnicosAv: [] });
+  const [fotos, setFotos] = useState([]);
+  const [carregandoFotos, setCarregandoFotos] = useState(false);
+  const [fotoAmpliada, setFotoAmpliada] = useState(null);
 
   useEffect(() => {
     if (aberto) setEtapa("detalhe");
-  }, [aberto, os?.id]);
+    if (aberto && os?.id) {
+      setCarregandoFotos(true);
+      listarFotosOS(empresaId, os.id)
+        .then(setFotos)
+        .finally(() => setCarregandoFotos(false));
+    }
+  }, [aberto, os?.id, empresaId]);
 
   if (!os) return null;
 
@@ -324,10 +345,17 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
         {/* ── DETALHE ──────────────────────────────────────── */}
         {etapa === "detalhe" && (
           <>
-            <div className="flex items-center gap-2 text-green-600 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
-              <CheckCircle size={15} />
-              <span className="text-sm font-semibold">Ordem de Serviço Concluída</span>
-            </div>
+            {osConcluida(os) ? (
+              <div className="flex items-center gap-2 text-green-600 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                <CheckCircle size={15} />
+                <span className="text-sm font-semibold">Ordem de Serviço Concluída</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                <Clock8 size={15} />
+                <span className="text-sm font-semibold">Atendimento em andamento</span>
+              </div>
+            )}
 
             {/* Técnicos */}
             {os.tecnicosNomes?.length > 0 ? (
@@ -389,13 +417,42 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
               <p className="text-sm text-gray-700">{formatarData(os.dataServico)}</p>
             </InfoLinha>
 
-            {os.fotos?.length > 0 && (
+            {carregandoFotos && (
+              <p className="text-xs text-gray-400">Carregando fotos...</p>
+            )}
+
+            {!carregandoFotos && fotos.length > 0 && (
+              <div className="space-y-3">
+                {["antes", "durante", "depois"].map(categoria => {
+                  const fotosCategoria = fotos.filter(f => f.categoria === categoria);
+                  if (fotosCategoria.length === 0) return null;
+                  return (
+                    <div key={categoria}>
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                        {LABEL_CATEGORIA_FOTO[categoria]} · {fotosCategoria.length}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {fotosCategoria.map(foto => (
+                          <img key={foto.id} src={foto.url} alt={LABEL_CATEGORIA_FOTO[categoria]}
+                            onClick={() => setFotoAmpliada(foto.url)}
+                            className="w-20 h-20 object-cover rounded-xl border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* OS antigas (anteriores a este módulo) guardavam fotos direto no doc */}
+            {!carregandoFotos && fotos.length === 0 && os.fotos?.length > 0 && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Fotos</p>
                 <div className="flex flex-wrap gap-2">
                   {os.fotos.map((url, i) => (
                     <img key={i} src={url} alt={`Foto ${i + 1}`}
-                      className="w-20 h-20 object-cover rounded-xl border border-gray-200" />
+                      onClick={() => setFotoAmpliada(url)}
+                      className="w-20 h-20 object-cover rounded-xl border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" />
                   ))}
                 </div>
               </div>
@@ -462,7 +519,7 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
               </div>
             )}
 
-            {eGestor && !os.avaliada && (
+            {eGestor && !os.avaliada && osConcluida(os) && (
               <button
                 onClick={abrirAvaliacao}
                 className="w-full flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white bg-[#7b8cd4] rounded-xl hover:bg-[#6677be] transition-colors"
@@ -560,6 +617,8 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
           </div>
         )}
       </div>
+
+      <VisualizadorFoto url={fotoAmpliada} onClose={() => setFotoAmpliada(null)} />
     </Modal>
   );
 }
@@ -597,7 +656,7 @@ export default function VerOs() {
           <h1 className="text-xl font-bold text-gray-800">Ordens de Serviço</h1>
         </div>
         <p className="text-sm text-gray-500 mb-5">
-          OS geradas automaticamente ao finalizar agendamentos.
+          OS criada automaticamente ao iniciar o atendimento e concluída ao finalizar.
         </p>
 
         {carregando && (

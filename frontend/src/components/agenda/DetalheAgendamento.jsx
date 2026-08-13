@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import Modal from "../Modal";
 import AssinaturaPad from "./AssinaturaPad";
 import FotoUpload from "./FotoUpload";
-import { createOS } from "../../services/os/osService";
+import FotoCapturaOS from "../os/FotoCapturaOS";
+import { criarOSRascunho, finalizarOS } from "../../services/os/osService";
 import { getAppointment } from "../../services/agenda/getAppointment";
 import {
   MapPin, Clock, User, FileText, CheckCircle,
@@ -32,6 +33,8 @@ const LABEL_STATUS = {
   concluido:    "Concluído",
   cancelado:    "Cancelado",
 };
+
+const LABEL_CATEGORIA_FOTO = { antes: "Antes", durante: "Durante", depois: "Depois" };
 
 function formatarData(ts) {
   return ts.toDate().toLocaleDateString("pt-BR", {
@@ -62,8 +65,8 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   const [etapa, setEtapa] = useState("detalhes");
   const [osForm, setOsForm] = useState({ servicoExecutado: "", materiaisUtilizados: "" });
   const [erroOs, setErroOs] = useState("");
-  const [fotos, setFotos] = useState([]);
   const [salvando, setSalvando] = useState(false);
+  const [contagemFotosOS, setContagemFotosOS] = useState({ antes: 0, durante: 0, depois: 0 });
 
   // Estado do formulário de edição
   const [editForm, setEditForm] = useState(null);
@@ -172,26 +175,58 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
       .filter(Boolean)
       .join(", ") ?? "—";
 
-  // Sincroniza fotos locais com o que está no evento quando abre o modal
+  // Fotos livres do gestor seguem vinculadas ao agendamento (recurso à parte
+  // da evidência fotográfica da OS, que agora vive em ordensServico/{osId}/fotos)
   const fotosEvento = evento.fotos ?? [];
+
+  // ─── OS (Ordem de Serviço) ──────────────────────────────────────────────
+  async function criarRascunhoOS() {
+    const tecnicoNome = localStorage.getItem("uid") || "";
+    const tecnicosDoEvento = (evento.tecnicos || []).map(id => {
+      const tec = tecnicos.find(t => t.id === id);
+      return { id, nome: tec?.nome || "" };
+    });
+    return criarOSRascunho(empresaId, {
+      agendamentoId:        evento.id,
+      tecnicoNome,
+      tecnicoIds:           tecnicosDoEvento.map(t => t.id),
+      tecnicosNomes:        tecnicosDoEvento.map(t => t.nome),
+      clienteNome:          evento.clienteNome,
+      endereco:             evento.endereco,
+      tipoServico:          evento.tipo,
+      descricaoAgendamento: evento.descricao,
+      veiculo:              evento.veiculo,
+      dataServico:          evento.inicio.toDate(),
+    });
+  }
 
   // ─── Ações ────────────────────────────────────────────────────────────
   async function iniciarServico() {
     setSalvando(true);
-    try { await onAtualizar(evento.id, { status: "em_andamento", fotos: [] }); }
-    finally { setSalvando(false); }
+    try {
+      const { id, numero } = await criarRascunhoOS();
+      await onAtualizar(evento.id, { status: "em_andamento", osId: id, osNumero: numero });
+    } finally {
+      setSalvando(false);
+    }
   }
 
   function avancarParaFormulario() {
     setOsForm({ servicoExecutado: "", materiaisUtilizados: "" });
     setErroOs("");
-    setFotos(fotosEvento);
     setEtapa("formulario_os");
   }
 
   function avancarParaAssinatura() {
     if (!osForm.servicoExecutado.trim()) {
       setErroOs("Descreva o serviço executado antes de continuar.");
+      return;
+    }
+    const faltando = Object.entries(contagemFotosOS)
+      .filter(([, qtd]) => qtd < 1)
+      .map(([categoria]) => LABEL_CATEGORIA_FOTO[categoria]);
+    if (faltando.length > 0) {
+      setErroOs(`Adicione ao menos 1 foto de: ${faltando.join(", ")}.`);
       return;
     }
     setErroOs("");
@@ -210,38 +245,17 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
         return;
       }
 
-      const tecnicoNome = localStorage.getItem("uid") || "";
-
-      // Monta lista completa de técnicos do agendamento para análise futura
-      const tecnicosDoEvento = (evento.tecnicos || []).map(id => {
-        const tec = tecnicos.find(t => t.id === id);
-        return { id, nome: tec?.nome || "" };
+      // Fecha a Ordem de Serviço aberta em "Iniciar Serviço"
+      await finalizarOS(empresaId, evento.osId, {
+        servicoExecutado:    osForm.servicoExecutado,
+        materiaisUtilizados: osForm.materiaisUtilizados,
+        assinatura:          assinaturaBase64,
       });
 
-      // Gera a Ordem de Serviço no Firestore
-      const { numero } = await createOS(empresaId, {
-        agendamentoId:        evento.id,
-        tecnicoNome,
-        tecnicoIds:           tecnicosDoEvento.map(t => t.id),
-        tecnicosNomes:        tecnicosDoEvento.map(t => t.nome),
-        clienteNome:          evento.clienteNome,
-        endereco:             evento.endereco,
-        tipoServico:          evento.tipo,
-        descricaoAgendamento: evento.descricao,
-        servicoExecutado:     osForm.servicoExecutado,
-        materiaisUtilizados:  osForm.materiaisUtilizados,
-        veiculo:              evento.veiculo,
-        fotos,
-        assinatura:           assinaturaBase64,
-        dataServico:          evento.inicio.toDate(),
-      });
-
-      // Atualiza o agendamento com status concluído + referência à OS
+      // Atualiza o agendamento com status concluído
       await onAtualizar(evento.id, {
         status:     "concluido",
         assinatura: assinaturaBase64,
-        fotos,
-        osNumero:   numero,
       });
 
       handleFechar();
@@ -252,9 +266,9 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
     }
   }
 
-  async function atualizarFotos(novasFotos) {
-    setFotos(novasFotos);
-    // Salva as fotos no agendamento em tempo real (segurança caso o app feche)
+  async function atualizarFotosGestor(novasFotos) {
+    // Fotos/observações livres do gestor — recurso à parte, não faz parte
+    // da evidência fotográfica da OS.
     await onAtualizar(evento.id, { fotos: novasFotos });
   }
 
@@ -352,39 +366,44 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               </InfoLinha>
             )}
 
-            {/* Fotos durante execução — técnico */}
-            {eTecnico && evento.status === "em_andamento" && (
-              <FotoUpload
-                empresaId={empresaId}
-                agendamentoId={evento.id}
-                fotosIniciais={fotosEvento}
-                onFotosChange={atualizarFotos}
-              />
+            {/* Registro fotográfico da OS (antes/durante/depois) — técnico, durante o atendimento */}
+            {eTecnico && evento.status === "em_andamento" && evento.osId && (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Fotos do serviço
+                </p>
+                <FotoCapturaOS
+                  empresaId={empresaId}
+                  osId={evento.osId}
+                  autorId={localStorage.getItem("usuarioId") || ""}
+                  autorNome={localStorage.getItem("uid") || ""}
+                  onContagemChange={setContagemFotosOS}
+                />
+              </div>
             )}
 
-            {/* Fotos — gestor/patrão pode adicionar em qualquer status (exceto cancelado) */}
+            {/* Fotos — gestor/patrão pode adicionar observações livres em qualquer status (exceto cancelado) */}
             {eGestor && evento.status !== "cancelado" && (
               <FotoUpload
                 empresaId={empresaId}
                 agendamentoId={evento.id}
                 fotosIniciais={fotosEvento}
-                onFotosChange={atualizarFotos}
+                onFotosChange={atualizarFotosGestor}
                 label="Fotos / Observações"
               />
             )}
 
-            {/* Fotos salvas (concluído) — exibe para técnico */}
-            {eTecnico && evento.status === "concluido" && fotosEvento.length > 0 && (
+            {/* Registro fotográfico da OS (concluído) — exibe para técnico */}
+            {eTecnico && evento.status === "concluido" && evento.osId && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
                   Fotos do serviço
                 </p>
-                <div className="flex flex-wrap gap-2">
-                  {fotosEvento.map((url, i) => (
-                    <img key={i} src={url} alt={`Foto ${i + 1}`}
-                      className="w-20 h-20 object-cover rounded-xl border border-gray-200" />
-                  ))}
-                </div>
+                <FotoCapturaOS
+                  empresaId={empresaId}
+                  osId={evento.osId}
+                  somenteLeitura
+                />
               </div>
             )}
 
@@ -628,13 +647,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               />
             </div>
 
-            {/* Fotos também ficam disponíveis aqui */}
-            <FotoUpload
-              empresaId={empresaId}
-              agendamentoId={evento.id}
-              fotosIniciais={fotos}
-              onFotosChange={novasFotos => setFotos(novasFotos)}
-            />
+            {/* Fotos da OS (antes/durante/depois) ficam disponíveis na etapa de detalhes */}
 
             <div className="flex gap-3 pt-1">
               <button onClick={() => setEtapa("detalhes")}

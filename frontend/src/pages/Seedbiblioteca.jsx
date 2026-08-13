@@ -208,7 +208,7 @@ const SERVICOS_FORNECIMENTO = [
     categoria: "fornecimento",
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 9.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [], opcoesEquipamento: [],
   },
   {
@@ -216,7 +216,7 @@ const SERVICOS_FORNECIMENTO = [
     categoria: "fornecimento",
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 12.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [], opcoesEquipamento: [],
   },
   {
@@ -224,7 +224,7 @@ const SERVICOS_FORNECIMENTO = [
     categoria: "fornecimento",
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 18.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [], opcoesEquipamento: [],
   },
   {
@@ -232,7 +232,7 @@ const SERVICOS_FORNECIMENTO = [
     categoria: "fornecimento",
     descricao: "Fornecimento de ar-condicionado Split Hi-Wall Só Fria 24.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 30, valorPorMetroTubulacao: 0,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [], opcoesEquipamento: [],
   },
   {
@@ -240,7 +240,7 @@ const SERVICOS_FORNECIMENTO = [
     categoria: "fornecimento",
     descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 36.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [], opcoesEquipamento: [],
   },
   {
@@ -248,7 +248,7 @@ const SERVICOS_FORNECIMENTO = [
     categoria: "fornecimento",
     descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 48.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [], opcoesEquipamento: [],
   },
   {
@@ -256,7 +256,7 @@ const SERVICOS_FORNECIMENTO = [
     categoria: "fornecimento",
     descricao: "Fornecimento de ar-condicionado Split Piso-Teto Só Fria 60.000 BTU/h, 220V/60Hz. Equipamento novo, em caixa lacrada, com Certificado INMETRO, Selo Procel A e Manual Técnico. Instalação não inclusa.",
     maoDeObra: 0, margemLucro: 28, valorPorMetroTubulacao: 0,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [], opcoesEquipamento: [],
   },
 ];
@@ -284,9 +284,9 @@ const SERVICOS = [
   {
     nome: "Instalação Split Hi-Wall 9.000 BTU/h",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 9.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 9.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
     maoDeObra: 550, margemLucro: 30, valorPorMetroTubulacao: 35,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Split Hi-Wall Só Fria 9.000 BTU/h 220V/60Hz", qtd: 1, valorUnit: 1850 },
     ],
@@ -294,9 +294,9 @@ const SERVICOS = [
   {
     nome: "Instalação Split Hi-Wall 12.000 BTU/h",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 12.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 12.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
     maoDeObra: 650, margemLucro: 30, valorPorMetroTubulacao: 35,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Split Hi-Wall Só Fria 12.000 BTU/h 220V/60Hz", qtd: 1, valorUnit: 2100 },
     ],
@@ -304,9 +304,9 @@ const SERVICOS = [
   {
     nome: "Instalação Split Hi-Wall 18.000 BTU/h",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 18.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 18.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
     maoDeObra: 800, margemLucro: 30, valorPorMetroTubulacao: 38,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Split Hi-Wall Só Fria 18.000 BTU/h 220V/60Hz", qtd: 1, valorUnit: 2750 },
     ],
@@ -314,9 +314,9 @@ const SERVICOS = [
   {
     nome: "Instalação Split Hi-Wall 24.000 BTU/h",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 24.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás R-410A e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Hi-Wall Só Fria 24.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, cabo PB/PP, dreno em PVC, vácuo, carga de gás refrigerante e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
     maoDeObra: 950, margemLucro: 30, valorPorMetroTubulacao: 40,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Split Hi-Wall Só Fria 24.000 BTU/h 220V/60Hz", qtd: 1, valorUnit: 3450 },
     ],
@@ -324,9 +324,9 @@ const SERVICOS = [
   {
     nome: "Instalação Split Piso-Teto 36.000 BTU/h",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto Só Fria 36.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno em PVC, bomba de condensado, vácuo, carga de gás R-410A e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto Só Fria 36.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno em PVC, bomba de condensado, vácuo, carga de gás refrigerante e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
     maoDeObra: 1800, margemLucro: 28, valorPorMetroTubulacao: 45,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Split Piso-Teto Só Fria 36.000 BTU/h 220V/60Hz", qtd: 1, valorUnit: 5500 },
     ],
@@ -334,9 +334,9 @@ const SERVICOS = [
   {
     nome: "Instalação Split Piso-Teto 48.000 BTU/h",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto Só Fria 48.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno em PVC, bomba de condensado, vácuo, carga de gás R-410A e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto Só Fria 48.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno em PVC, bomba de condensado, vácuo, carga de gás refrigerante e testes de comissionamento. Execução conforme ABNT e NRs aplicáveis.",
     maoDeObra: 2200, margemLucro: 28, valorPorMetroTubulacao: 48,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Split Piso-Teto Só Fria 48.000 BTU/h 220V/60Hz", qtd: 1, valorUnit: 7000 },
     ],
@@ -344,9 +344,9 @@ const SERVICOS = [
   {
     nome: "Instalação Split Piso-Teto 60.000 BTU/h",
     categoria: "instalacao",
-    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto Só Fria 60.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno em PVC, bomba de condensado Elgin FP2210, vácuo, carga de gás R-410A e testes de comissionamento. Execução conforme ABNT (NBR 5410, 14136 e 16401) e NRs aplicáveis, com visita técnica prévia e APR/PT quando necessário. Equipe uniformizada com crachá DSTr/Unicamp.",
+    descricao: "Fornecimento e instalação de ar-condicionado Split Piso-Teto Só Fria 60.000 BTU/h, 220V/60Hz. Inclui suporte metálico novo, tubulação de cobre nova e isolada, canaleta, cabo PB/PP, dreno em PVC, bomba de condensado Elgin FP2210, vácuo, carga de gás refrigerante e testes de comissionamento. Execução conforme ABNT (NBR 5410, 14136 e 16401) e NRs aplicáveis, com visita técnica prévia e APR/PT quando necessário. Equipe uniformizada com crachá DSTr/Unicamp.",
     maoDeObra: 2650, margemLucro: 28, valorPorMetroTubulacao: 50,
-    garantia: "12 meses peças / 36 meses compressor",
+    garantia: "12 meses",
     materiais: [
       { nome: "Split Piso-Teto Só Fria 60.000 BTU/h 220V/60Hz", qtd: 1, valorUnit: 8824.50 },
     ],

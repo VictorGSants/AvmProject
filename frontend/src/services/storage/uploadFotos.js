@@ -3,11 +3,11 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const TIMEOUT_MS = 30_000;
 
-// Faz upload de um arquivo para Firebase Storage e retorna a URL pública.
-// Caminho: fotos/{empresaId}/{agendamentoId}/{timestamp}_{nome_sanitizado}
-export async function uploadFoto(empresaId, agendamentoId, arquivo) {
-  const nomeSeguro = arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-  const caminho = `fotos/${empresaId}/${agendamentoId}/${Date.now()}_${nomeSeguro}`;
+// Faz upload de um arquivo para um caminho qualquer do Storage e retorna a
+// URL pública. Nunca fica pendurado: acima de TIMEOUT_MS, rejeita com uma
+// mensagem acionável (o caso mais comum é o Storage não estar habilitado
+// no Firebase Console / projeto ainda no plano Spark).
+export async function uploadParaCaminho(caminho, arquivo) {
   const storageRef = ref(storage, caminho);
 
   const uploadPromise = uploadBytes(storageRef, arquivo)
@@ -21,4 +21,12 @@ export async function uploadFoto(empresaId, agendamentoId, arquivo) {
   );
 
   return Promise.race([uploadPromise, timeoutPromise]);
+}
+
+// Faz upload de um arquivo para Firebase Storage e retorna a URL pública.
+// Caminho: fotos/{empresaId}/{agendamentoId}/{timestamp}_{nome_sanitizado}
+export async function uploadFoto(empresaId, agendamentoId, arquivo) {
+  const nomeSeguro = arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const caminho = `fotos/${empresaId}/${agendamentoId}/${Date.now()}_${nomeSeguro}`;
+  return uploadParaCaminho(caminho, arquivo);
 }

@@ -16,6 +16,22 @@ import { toast } from "sonner";
 
 const STEPS = ["Cliente", "Serviço", "Itens", "Revisão"];
 
+// Validade padrão é de 5 dias. Exceção: quando o fornecedor do equipamento é
+// a Uniar, a validade acompanha a tabela de preços da Uniar, que é mensal —
+// por isso vira "até o fim do mês corrente" em vez de um prazo fixo em dias.
+const VALIDADE_PADRAO = "5 dias";
+const VALIDADE_AUTO_RE = /^(5 dias|Válido até \d{2}\/\d{2}\/\d{4})$/;
+
+function validadeUltimoDiaDoMes() {
+  const hoje = new Date();
+  const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+  return `Válido até ${ultimoDia.toLocaleDateString("pt-BR")}`;
+}
+
+function validadePara(fornecedorObj) {
+  return /uniar/i.test(fornecedorObj?.nome || "") ? validadeUltimoDiaDoMes() : VALIDADE_PADRAO;
+}
+
 // Orçamentos antigos guardavam equipamento em tabelas estruturadas com nomes
 // de campo diferentes (itensEquipamentos / opcoesEquipamento), e uma fase
 // intermediária usou um texto livre único (equipamentoTexto). Ao editar um
@@ -56,10 +72,10 @@ export default function NovoOrcamento() {
   const [observacoes, setObservacoes]         = useState("");
   const [processo, setProcesso]               = useState("");
   const [descricaoObjeto, setDescricaoObjeto] = useState("");
-  const [garantia, setGarantia]               = useState("12 meses peças / 36 meses compressor");
+  const [garantia, setGarantia]               = useState("12 meses");
   const [pagamento, setPagamento]             = useState("15 DDL");
-  const [validade, setValidade]               = useState("30 dias");
-  const [prazoExecucao, setPrazoExecucao]     = useState("30 dias");
+  const [validade, setValidade]               = useState(VALIDADE_PADRAO);
+  const [prazoExecucao, setPrazoExecucao]     = useState("15 dias");
   const [servicoCategoria, setServicoCategoria] = useState("");
   const [exibirFornecedor, setExibirFornecedor]         = useState(false);
   const [fornecedor, setFornecedor]                     = useState(null);
@@ -92,10 +108,10 @@ export default function NovoOrcamento() {
         setProcesso(orc.processo       || "");
         setObservacoes(orc.observacoes || "");
         setDescricaoObjeto(orc.descricaoObjeto || "");
-        setGarantia(orc.garantia         || "12 meses peças / 36 meses compressor");
+        setGarantia(orc.garantia         || "12 meses");
         setPagamento(orc.pagamento       || "15 DDL");
-        setValidade(orc.validade         || "30 dias");
-        setPrazoExecucao(orc.prazoExecucao || "30 dias");
+        setValidade(orc.validade         || validadePara(orc.fornecedor));
+        setPrazoExecucao(orc.prazoExecucao || "15 dias");
         setServicoCategoria(orc.servicoCategoria || "");
         setExibirFornecedor(orc.exibirDadosFornecedor ?? false);
         setFornecedor(orc.fornecedor || null);
@@ -109,8 +125,8 @@ export default function NovoOrcamento() {
             : getCondicoesDefault(
                 orc.servicoCategoria || "",
                 orc.servicoNome      || "",
-                orc.garantia         || "12 meses peças / 36 meses compressor",
-                orc.prazoExecucao    || "30 dias"
+                orc.garantia         || "12 meses",
+                orc.prazoExecucao    || "15 dias"
               )
         );
         setStep(2);
@@ -133,15 +149,24 @@ export default function NovoOrcamento() {
     setDescricaoObjeto(s.descricao || "");
     setServicoCategoria(s.categoria || "");
     const ehManut = /manut|correti|preventi/i.test(s.categoria || s.nome || "");
-    const g = s.garantia || (ehManut ? "90 dias" : "12 meses peças / 36 meses compressor");
-    const p = "30 dias";
+    const g = s.garantia || (ehManut ? "90 dias" : "12 meses");
+    const p = "15 dias";
     setGarantia(g);
     setPagamento("15 DDL");
-    setValidade("30 dias");
+    setValidade(validadePara(fornecedor));
     setPrazoExecucao(p);
     setPrecoFinal("");
     setCondicoesServico(getCondicoesDefault(s.categoria || "", s.nome || "", g, p));
     setStep(2);
+  }
+
+  // Troca de fornecedor pode mudar a validade padrão (Uniar = até o fim do
+  // mês, por causa da tabela de preços mensal). Só recalcula se a validade
+  // atual ainda for um valor automático — se o usuário digitou algo próprio,
+  // não sobrescreve.
+  function handleFornecedorChange(novoFornecedor) {
+    setFornecedor(novoFornecedor);
+    setValidade((prev) => (VALIDADE_AUTO_RE.test(prev) ? validadePara(novoFornecedor) : prev));
   }
 
   async function handleSalvar(rascunho = false) {
@@ -269,7 +294,7 @@ export default function NovoOrcamento() {
             onPagamentoChange={setPagamento} onValidadeChange={setValidade}
             onPrazoChange={setPrazoExecucao}
             exibirFornecedor={exibirFornecedor} setExibirFornecedor={setExibirFornecedor}
-            fornecedor={fornecedor} setFornecedor={setFornecedor}
+            fornecedor={fornecedor} setFornecedor={handleFornecedorChange}
             exibirDadosBancarios={exibirDadosBancarios} setExibirDadosBancarios={setExibirDadosBancarios}
             direcionadoA={direcionadoA} onDirecionadoAChange={setDirecionadoA}
             aoCuidadoDe={aoCuidadoDe}   onAoCuidadoDeChange={setAoCuidadoDe}
@@ -1041,11 +1066,11 @@ function StepRevisao({
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Condições Comerciais</p>
         <div className="grid grid-cols-3 gap-2 mb-3">
           <InputField label="Pagamento"   value={pagamento}     onChange={onPagamentoChange} placeholder="15 DDL" />
-          <InputField label="Validade"    value={validade}      onChange={onValidadeChange}  placeholder="30 dias" />
-          <InputField label="Prazo exec." value={prazoExecucao} onChange={onPrazoChange}     placeholder="30 dias" />
+          <InputField label="Validade"    value={validade}      onChange={onValidadeChange}  placeholder="5 dias" />
+          <InputField label="Prazo exec." value={prazoExecucao} onChange={onPrazoChange}     placeholder="15 dias" />
         </div>
         <InputField label="Garantia" value={garantia} onChange={onGarantiaChange}
-          placeholder="12 meses peças / 36 meses compressor" />
+          placeholder="12 meses" />
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-4 mb-4">
@@ -1142,7 +1167,7 @@ function StepRevisao({
 }
 
 // ── Seletor de Fornecedor (igual ao seletor de cliente) ───────────────────
-const VAZIO_FORN = { nome: "", cnpj: "", banco: "" };
+const VAZIO_FORN = { nome: "", cnpj: "", ie: "", endereco: "", vendedor: "", banco: "" };
 
 function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
   const [fornecedores, setFornecedores]   = useState([]);
@@ -1169,8 +1194,11 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
     setCriando(true);
     try {
       const dados = { nome: novo.nome.trim() };
-      if (novo.cnpj.trim())  dados.cnpj  = novo.cnpj.trim();
-      if (novo.banco.trim()) dados.banco  = novo.banco.trim();
+      if (novo.cnpj.trim())     dados.cnpj     = novo.cnpj.trim();
+      if (novo.ie.trim())       dados.ie       = novo.ie.trim();
+      if (novo.endereco.trim()) dados.endereco = novo.endereco.trim();
+      if (novo.vendedor.trim()) dados.vendedor = novo.vendedor.trim();
+      if (novo.banco.trim())    dados.banco    = novo.banco.trim();
       const id = await criarFornecedor(eId, dados);
       toast.success("Fornecedor cadastrado!");
       const criado = { id, ...dados };
@@ -1187,8 +1215,11 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
       <div className="flex items-start justify-between bg-amber-50 border border-amber-300 rounded-xl p-3">
         <div>
           <p className="text-sm font-semibold text-gray-800">{fornecedorSelecionado.nome}</p>
-          {fornecedorSelecionado.cnpj  && <p className="text-xs text-gray-500 mt-0.5">CNPJ {fornecedorSelecionado.cnpj}</p>}
-          {fornecedorSelecionado.banco && <p className="text-xs text-gray-500">{fornecedorSelecionado.banco}</p>}
+          {fornecedorSelecionado.cnpj     && <p className="text-xs text-gray-500 mt-0.5">CNPJ {fornecedorSelecionado.cnpj}</p>}
+          {fornecedorSelecionado.ie       && <p className="text-xs text-gray-500">IE {fornecedorSelecionado.ie}</p>}
+          {fornecedorSelecionado.endereco && <p className="text-xs text-gray-500">{fornecedorSelecionado.endereco}</p>}
+          {fornecedorSelecionado.vendedor && <p className="text-xs text-gray-500">Vendedor: {fornecedorSelecionado.vendedor}</p>}
+          {fornecedorSelecionado.banco    && <p className="text-xs text-gray-500">{fornecedorSelecionado.banco}</p>}
         </div>
         <button onClick={() => onSelect(null)}
           className="text-xs text-[#14213D] font-semibold ml-3 flex-shrink-0">
@@ -1214,9 +1245,12 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
               className="p-3 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-[#D97706] transition-all">
               <p className="text-sm font-semibold text-gray-800">{f.nome}</p>
               <div className="flex flex-wrap gap-x-3 mt-0.5">
-                {f.cnpj  && <span className="text-xs text-gray-400">CNPJ {f.cnpj}</span>}
-                {f.banco && <span className="text-xs text-gray-400">{f.banco}</span>}
+                {f.cnpj     && <span className="text-xs text-gray-400">CNPJ {f.cnpj}</span>}
+                {f.ie       && <span className="text-xs text-gray-400">IE {f.ie}</span>}
+                {f.vendedor && <span className="text-xs text-gray-400">Vendedor: {f.vendedor}</span>}
+                {f.banco    && <span className="text-xs text-gray-400">{f.banco}</span>}
               </div>
+              {f.endereco && <p className="text-xs text-gray-400 mt-0.5">{f.endereco}</p>}
             </div>
           ))}
           {filtrados.length === 0 && (
@@ -1236,6 +1270,12 @@ function SeletorFornecedor({ eId, fornecedorSelecionado, onSelect }) {
             value={novo.nome} onChange={e => campo("nome", e.target.value)} />
           <ClienteField label="CNPJ" type="text" placeholder="00.000.000/0001-00"
             value={novo.cnpj} onChange={e => campo("cnpj", e.target.value)} />
+          <ClienteField label="Inscrição Estadual" type="text" placeholder="000000000"
+            value={novo.ie} onChange={e => campo("ie", e.target.value)} />
+          <ClienteField label="Endereço" type="text" placeholder="Rua, número – bairro – Cidade/UF"
+            value={novo.endereco} onChange={e => campo("endereco", e.target.value)} />
+          <ClienteField label="Vendedor" type="text" placeholder="Nome do vendedor/contato"
+            value={novo.vendedor} onChange={e => campo("vendedor", e.target.value)} />
           <ClienteField label="Dados Bancários" type="text" placeholder="Ex: Itaú · Ag. 0000 · CC 00000-0"
             value={novo.banco} onChange={e => campo("banco", e.target.value)} />
           <button onClick={handleCriar} disabled={!novo.nome.trim() || criando}
