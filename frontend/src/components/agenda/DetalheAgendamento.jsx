@@ -4,11 +4,13 @@ import Modal from "../Modal";
 import AssinaturaPad from "./AssinaturaPad";
 import FotoUpload from "./FotoUpload";
 import FotoCapturaOS from "../os/FotoCapturaOS";
+import SeletorEquipamento from "../os/SeletorEquipamento";
+import FormularioMedicoes from "../os/FormularioMedicoes";
 import { criarOSRascunho, finalizarOS } from "../../services/os/osService";
 import { getAppointment } from "../../services/agenda/getAppointment";
 import {
   MapPin, Clock, User, FileText, CheckCircle,
-  Play, Trash2, ChevronRight, Car, ArrowLeft, Pencil,
+  Play, Trash2, ChevronRight, Car, ArrowLeft, Pencil, Wrench,
 } from "lucide-react";
 import { VEICULOS } from "../../hooks/useRotinas";
 
@@ -67,6 +69,8 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   const [erroOs, setErroOs] = useState("");
   const [salvando, setSalvando] = useState(false);
   const [contagemFotosOS, setContagemFotosOS] = useState({ antes: 0, durante: 0, depois: 0 });
+  const [medicoesValidas, setMedicoesValidas] = useState(true);
+  const [nomeCliente, setNomeCliente] = useState("");
 
   // Estado do formulário de edição
   const [editForm, setEditForm] = useState(null);
@@ -180,7 +184,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   const fotosEvento = evento.fotos ?? [];
 
   // ─── OS (Ordem de Serviço) ──────────────────────────────────────────────
-  async function criarRascunhoOS() {
+  async function criarRascunhoOS(equipamento) {
     const tecnicoNome = localStorage.getItem("uid") || "";
     const tecnicosDoEvento = (evento.tecnicos || []).map(id => {
       const tec = tecnicos.find(t => t.id === id);
@@ -196,16 +200,30 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
       tipoServico:          evento.tipo,
       descricaoAgendamento: evento.descricao,
       veiculo:              evento.veiculo,
+      equipamentoId:        equipamento?.id || null,
+      equipamentoNome:      equipamento?.nome || "",
       dataServico:          evento.inicio.toDate(),
     });
   }
 
   // ─── Ações ────────────────────────────────────────────────────────────
-  async function iniciarServico() {
+  function iniciarServico() {
+    if (evento.contratoId) {
+      setEtapa("equipamento");
+    } else {
+      confirmarInicioServico(null);
+    }
+  }
+
+  async function confirmarInicioServico(equipamento) {
     setSalvando(true);
     try {
-      const { id, numero } = await criarRascunhoOS();
-      await onAtualizar(evento.id, { status: "em_andamento", osId: id, osNumero: numero });
+      const { id, numero } = await criarRascunhoOS(equipamento);
+      await onAtualizar(evento.id, {
+        status: "em_andamento", osId: id, osNumero: numero,
+        equipamentoId: equipamento?.id || null, equipamentoNome: equipamento?.nome || "",
+      });
+      setEtapa("detalhes");
     } finally {
       setSalvando(false);
     }
@@ -214,12 +232,17 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   function avancarParaFormulario() {
     setOsForm({ servicoExecutado: "", materiaisUtilizados: "" });
     setErroOs("");
+    setMedicoesValidas(true);
     setEtapa("formulario_os");
   }
 
   function avancarParaAssinatura() {
     if (!osForm.servicoExecutado.trim()) {
       setErroOs("Descreva o serviço executado antes de continuar.");
+      return;
+    }
+    if (!medicoesValidas) {
+      setErroOs("Preencha as medições obrigatórias e justifique os valores fora da faixa antes de continuar.");
       return;
     }
     const faltando = Object.entries(contagemFotosOS)
@@ -247,15 +270,17 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
 
       // Fecha a Ordem de Serviço aberta em "Iniciar Serviço"
       await finalizarOS(empresaId, evento.osId, {
-        servicoExecutado:    osForm.servicoExecutado,
-        materiaisUtilizados: osForm.materiaisUtilizados,
-        assinatura:          assinaturaBase64,
+        servicoExecutado:      osForm.servicoExecutado,
+        materiaisUtilizados:   osForm.materiaisUtilizados,
+        assinatura:            assinaturaBase64,
+        assinaturaClienteNome: nomeCliente.trim(),
       });
 
       // Atualiza o agendamento com status concluído
       await onAtualizar(evento.id, {
-        status:     "concluido",
-        assinatura: assinaturaBase64,
+        status:                "concluido",
+        assinatura:            assinaturaBase64,
+        assinaturaClienteNome: nomeCliente.trim(),
       });
 
       handleFechar();
@@ -285,6 +310,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
     setErroOs("");
     setEditForm(null);
     setErrosEdit({});
+    setNomeCliente("");
     onFechar();
   }
 
@@ -292,6 +318,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   return (
     <Modal aberto={aberto} onClose={handleFechar} titulo={
       etapa === "edicao"        ? "Editar Agendamento"
+      : etapa === "equipamento" ? "Selecionar Equipamento"
       : etapa === "formulario_os" ? "Relatório do Serviço"
       : etapa === "assinatura"  ? "Coleta de Assinatura"
       : evento.tipo
@@ -339,6 +366,12 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
             {evento.clienteNome && (
               <InfoLinha Icone={User} label="Cliente / Local">
                 <p className="text-sm text-gray-700">{evento.clienteNome}</p>
+              </InfoLinha>
+            )}
+
+            {evento.equipamentoNome && (
+              <InfoLinha Icone={Wrench} label="Equipamento">
+                <p className="text-sm text-gray-700">{evento.equipamentoNome}</p>
               </InfoLinha>
             )}
 
@@ -411,7 +444,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
             {evento.status === "concluido" && evento.assinatura && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
-                  Assinatura coletada
+                  Assinatura coletada {evento.assinaturaClienteNome && `· ${evento.assinaturaClienteNome}`}
                 </p>
                 <img src={evento.assinatura} alt="Assinatura"
                   className="w-full max-h-28 object-contain border border-gray-200 rounded-xl bg-gray-50" />
@@ -446,6 +479,17 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               </div>
             )}
           </>
+        )}
+
+        {/* ── ETAPA: SELEÇÃO DE EQUIPAMENTO ───────────────── */}
+        {etapa === "equipamento" && (
+          <SeletorEquipamento
+            contratoId={evento.contratoId}
+            empresaId={empresaId}
+            disabled={salvando}
+            onSelecionar={confirmarInicioServico}
+            onPular={() => confirmarInicioServico(null)}
+          />
         )}
 
         {/* ── ETAPA: EDIÇÃO ───────────────────────────────── */}
@@ -649,6 +693,16 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
 
             {/* Fotos da OS (antes/durante/depois) ficam disponíveis na etapa de detalhes */}
 
+            <FormularioMedicoes
+              empresaId={empresaId}
+              osId={evento.osId}
+              tipoServico={evento.tipo}
+              equipamentoId={evento.equipamentoId}
+              autorId={localStorage.getItem("usuarioId") || ""}
+              autorNome={localStorage.getItem("uid") || ""}
+              onValidoChange={setMedicoesValidas}
+            />
+
             <div className="flex gap-3 pt-1">
               <button onClick={() => setEtapa("detalhes")}
                 className="flex items-center gap-1 px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
@@ -670,10 +724,38 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               <p><span className="font-semibold">Serviço:</span> {evento.tipo}</p>
             </div>
 
-            <AssinaturaPad
-              onConfirmar={finalizarComAssinatura}
-              onCancelar={() => setEtapa("formulario_os")}
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nome de quem está assinando <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={nomeCliente}
+                onChange={e => setNomeCliente(e.target.value)}
+                placeholder="Nome completo do cliente/responsável"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#7b8cd4]"
+                autoFocus
+              />
+            </div>
+
+            {nomeCliente.trim() ? (
+              <AssinaturaPad
+                onConfirmar={finalizarComAssinatura}
+                onCancelar={() => setEtapa("formulario_os")}
+              />
+            ) : (
+              <div className="text-center py-4 space-y-3">
+                <p className="text-xs text-gray-400">
+                  Informe o nome do cliente para habilitar a assinatura.
+                </p>
+                <button
+                  onClick={() => setEtapa("formulario_os")}
+                  className="flex items-center gap-1 mx-auto px-4 py-2 text-sm text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <ArrowLeft size={14} /> Voltar
+                </button>
+              </div>
+            )}
 
             {salvando && (
               <p className="text-center text-sm text-gray-500 animate-pulse">

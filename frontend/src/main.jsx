@@ -5,6 +5,7 @@ import "./index.css"; // Importante!
 import RouterApp from "./routes/routes.jsx";
 import ContratoProvider from "./context/ContratoContext.jsx";
 import { registerSW } from "virtual:pwa-register";
+import { iniciarVerificacaoDeVersao } from "./services/versionCheck";
 
 // O app fica instalado e aberto por horas nos celulares dos técnicos, então o
 // navegador não checa sozinho se saiu uma versão nova. Aqui forçamos a checagem
@@ -21,6 +22,12 @@ registerSW({
     });
   },
 });
+
+// Camada extra, independente do Service Worker: em sinal fraco a checagem de
+// update do SW pode nunca completar. Isso aqui busca um arquivo estático
+// pequeno direto da rede (sem cache) e recarrega sozinho ao detectar deploy
+// novo — é o que garante o "atualiza sozinho" mesmo quando o SW falha.
+iniciarVerificacaoDeVersao();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

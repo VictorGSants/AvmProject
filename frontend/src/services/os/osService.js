@@ -1,9 +1,9 @@
 import { db } from "../../config/firebaseConfig";
-import { collection, addDoc, getDocs, doc, updateDoc, query, orderBy, Timestamp, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, getDoc, doc, updateDoc, query, orderBy, Timestamp, serverTimestamp } from "firebase/firestore";
 
 // Cria a OS já no início do atendimento (status "em_andamento"), antes de
-// existir relatório/assinatura — é o que dá às fotos (e, futuramente,
-// medições) um osId real para se vincular durante toda a execução.
+// existir relatório/assinatura — é o que dá às fotos e medições um osId
+// real para se vincular durante toda a execução.
 export async function criarOSRascunho(empresaId, dados) {
   const ref = collection(db, "empresas", empresaId, "ordensServico");
   const numero = `OS-${Date.now().toString().slice(-6)}`;
@@ -20,7 +20,10 @@ export async function criarOSRascunho(empresaId, dados) {
     tipoServico:          dados.tipoServico          || "",
     descricaoAgendamento: dados.descricaoAgendamento || "",
     veiculo:              dados.veiculo              || "",
+    equipamentoId:        dados.equipamentoId        || null,
+    equipamentoNome:      dados.equipamentoNome      || "",
     contagemFotos:        { antes: 0, durante: 0, depois: 0 },
+    medicoes:             {},
     dataServico:          Timestamp.fromDate(dados.dataServico),
     criadoEm:             serverTimestamp(),
   });
@@ -28,15 +31,22 @@ export async function criarOSRascunho(empresaId, dados) {
   return { id: docRef.id, numero };
 }
 
+export async function buscarOS(empresaId, osId) {
+  const snap = await getDoc(doc(db, "empresas", empresaId, "ordensServico", osId));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
 // Fecha a OS aberta por criarOSRascunho, gravando o relatório do serviço.
 export async function finalizarOS(empresaId, osId, dados) {
   const ref = doc(db, "empresas", empresaId, "ordensServico", osId);
   await updateDoc(ref, {
-    status:              "concluido",
-    servicoExecutado:    dados.servicoExecutado,
-    materiaisUtilizados: dados.materiaisUtilizados || "",
-    assinatura:          dados.assinatura || null,
-    concluidoEm:         serverTimestamp(),
+    status:                 "concluido",
+    servicoExecutado:       dados.servicoExecutado,
+    materiaisUtilizados:    dados.materiaisUtilizados || "",
+    assinatura:             dados.assinatura || null,
+    assinaturaClienteNome:  dados.assinaturaClienteNome || "",
+    concluidoEm:            serverTimestamp(),
   });
 }
 

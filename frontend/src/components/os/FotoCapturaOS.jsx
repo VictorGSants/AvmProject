@@ -17,7 +17,9 @@ const CATEGORIAS = [
 // useWebWorker desligado: em alguns setups (Vite dev server, iOS Safari
 // mais antigo) o worker da lib nunca sobe nem falha — só fica pendurado
 // sem resolver nem rejeitar, travando a foto pra sempre.
-const OPCOES_COMPRESSAO = { maxWidthOrHeight: 1600, maxSizeMB: 0.8, useWebWorker: false };
+// Tamanho reduzido pra encurtar o upload em sinal fraco (o cenário normal
+// de campo) — ainda dá evidência legível, só não é foto de alta resolução.
+const OPCOES_COMPRESSAO = { maxWidthOrHeight: 1280, maxSizeMB: 0.5, useWebWorker: false };
 const TIMEOUT_GEO_MS = 8000;
 const TIMEOUT_COMPRESSAO_MS = 15_000;
 
@@ -131,6 +133,7 @@ export default function FotoCapturaOS({
 
       try {
         await enviarDireto(dados);
+        toast.success("Foto enviada.");
       } catch (err) {
         console.warn("Upload direto falhou, enfileirando offline:", err.message);
         await enfileirarFoto(dados);
@@ -171,6 +174,13 @@ export default function FotoCapturaOS({
 
   return (
     <div className="space-y-4">
+      {enviandoCategoria && (
+        <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-xs text-blue-700">
+          <Loader2 size={13} className="animate-spin flex-shrink-0" />
+          Enviando foto... não feche o app, isso pode levar um tempo em sinal fraco.
+        </div>
+      )}
+
       {pendentes.length > 0 && (
         <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs text-amber-700">
           <span className="flex items-center gap-1.5">

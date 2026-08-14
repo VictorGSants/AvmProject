@@ -30,16 +30,23 @@ service cloud.firestore {
     match /empresas/{empresaId}/ordensServico/{osId} {
       allow create: if request.auth != null;
 
-      // Só permite marcar a OS como concluída se as 3 categorias de foto
-      // (antes/durante/depois) já tiverem ao menos 1 registro — e a própria
-      // contagem não pode ser alterada na mesma escrita que fecha a OS
-      // (ela só muda pela transação de criarFotoOS/removerFotoOS).
+      // Enquanto a OS está em_andamento: só permite marcar como concluída
+      // se as 3 categorias de foto (antes/durante/depois) já tiverem ao
+      // menos 1 registro — e a própria contagem não pode ser alterada na
+      // mesma escrita que fecha a OS (ela só muda pela transação de
+      // criarFotoOS/removerFotoOS).
+      // Depois de concluída: registro de auditoria — só os campos da
+      // avaliação do gestor (avaliarOS) podem mudar; servicoExecutado,
+      // medições, fotos etc. ficam travados pra sempre.
       allow update: if request.auth != null &&
-        (request.resource.data.status != 'concluido' ||
-         (request.resource.data.contagemFotos == resource.data.contagemFotos &&
-          resource.data.contagemFotos.antes > 0 &&
-          resource.data.contagemFotos.durante > 0 &&
-          resource.data.contagemFotos.depois > 0));
+        (resource.data.status == 'concluido'
+          ? request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['avaliada', 'valorServico', 'comissaoTotal', 'avaliacoes', 'avaliadoPor', 'avaliadoEm'])
+          : (request.resource.data.status != 'concluido' ||
+             (request.resource.data.contagemFotos == resource.data.contagemFotos &&
+              resource.data.contagemFotos.antes > 0 &&
+              resource.data.contagemFotos.durante > 0 &&
+              resource.data.contagemFotos.depois > 0)));
 
       allow delete: if false;
 
@@ -57,6 +64,16 @@ service cloud.firestore {
         allow delete: if request.auth != null
           && (isGestor() || resource.data.autorId == request.auth.uid)
           && get(/databases/$(database)/documents/empresas/$(empresaId)/ordensServico/$(osId)).data.status == 'em_andamento';
+      }
+
+      // Registro de não conformidade: totalmente imutável (nem o autor nem
+      // o gestor corrige depois de criado — é o próprio histórico).
+      match /naoConformidades/{naoConformidadeId} {
+        allow create: if request.auth != null
+          && request.resource.data.autorId == request.auth.uid
+          && request.resource.data.criadoEm == request.time;
+
+        allow update, delete: if false;
       }
     }
   }

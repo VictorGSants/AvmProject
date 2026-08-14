@@ -4,11 +4,15 @@ import Header from "../components/Header";
 import Modal from "../components/Modal";
 import { getOrdens, avaliarOS } from "../services/os/osService";
 import { listarFotosOS } from "../services/os/osFotoService";
+import { listarNaoConformidades } from "../services/os/medicaoService";
+import { camposParaTipo } from "../config/medicoesConfig";
+import { getAppointment } from "../services/agenda/getAppointment";
 import VisualizadorFoto from "../components/os/VisualizadorFoto";
 import {
   ClipboardList, User, MapPin, Wrench, Package,
   Car, Calendar, CheckCircle, ChevronRight, Loader2,
   Star, DollarSign, MessageSquare, TrendingUp, BadgeCheck, Users, Clock8,
+  AlertTriangle,
 } from "lucide-react";
 
 const LABEL_DESEMPENHO = ["", "Abaixo do esperado", "Regular", "Bom", "Muito bom", "Excelente"];
@@ -258,7 +262,9 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
   const [avForm, setAvForm] = useState({ valorServico: "", tecnicosAv: [] });
   const [fotos, setFotos] = useState([]);
   const [carregandoFotos, setCarregandoFotos] = useState(false);
+  const [fotosObservacao, setFotosObservacao] = useState([]);
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
+  const [naoConformidades, setNaoConformidades] = useState([]);
 
   useEffect(() => {
     if (aberto) setEtapa("detalhe");
@@ -267,8 +273,20 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
       listarFotosOS(empresaId, os.id)
         .then(setFotos)
         .finally(() => setCarregandoFotos(false));
+      listarNaoConformidades(empresaId, os.id)
+        .then(setNaoConformidades)
+        .catch(() => setNaoConformidades([]));
     }
-  }, [aberto, os?.id, empresaId]);
+    if (aberto && os?.agendamentoId) {
+      // Fotos livres que o gestor anexa ao agendamento (observações à parte
+      // da evidência da OS) — ficam salvas no agendamento, não na OS.
+      getAppointment(empresaId, os.agendamentoId)
+        .then(agendamento => setFotosObservacao(agendamento?.fotos || []))
+        .catch(() => setFotosObservacao([]));
+    } else {
+      setFotosObservacao([]);
+    }
+  }, [aberto, os?.id, os?.agendamentoId, empresaId]);
 
   if (!os) return null;
 
@@ -391,6 +409,12 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
               <p className="text-sm text-gray-700">{os.tipoServico || "—"}</p>
             </InfoLinha>
 
+            {os.equipamentoNome && (
+              <InfoLinha Icone={Wrench} label="Equipamento">
+                <p className="text-sm text-gray-700">{os.equipamentoNome}</p>
+              </InfoLinha>
+            )}
+
             {os.descricaoAgendamento && (
               <InfoLinha Icone={ClipboardList} label="Observações do agendamento">
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{os.descricaoAgendamento}</p>
@@ -405,6 +429,57 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
               <InfoLinha Icone={Package} label="Materiais utilizados">
                 <p className="text-sm text-gray-700 whitespace-pre-wrap">{os.materiaisUtilizados}</p>
               </InfoLinha>
+            )}
+
+            {os.medicoes && Object.keys(os.medicoes).length > 0 && (() => {
+              const campos = camposParaTipo(os.tipoServico);
+              const entradas = Object.entries(os.medicoes).filter(([, v]) => v !== "" && v != null);
+              if (entradas.length === 0) return null;
+              return (
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    Medições técnicas
+                  </p>
+                  <div className="bg-slate-50 rounded-xl p-3 space-y-1.5">
+                    {entradas.map(([chave, valor]) => {
+                      const campo = campos.find(c => c.chave === chave);
+                      const rotulo = campo?.rotulo || chave;
+                      const unidade = campo?.unidade || "";
+                      const exibirValor = campo?.tipo === "conforme"
+                        ? (valor === "nao_conforme" ? "Não conforme" : "Conforme")
+                        : `${valor}${unidade ? ` ${unidade}` : ""}`;
+                      return (
+                        <div key={chave} className="flex justify-between text-sm">
+                          <span className="text-gray-500">{rotulo}</span>
+                          <span className={`font-medium ${valor === "nao_conforme" ? "text-red-600" : "text-gray-700"}`}>
+                            {exibirValor}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {naoConformidades.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Não conformidades
+                </p>
+                <div className="space-y-2">
+                  {naoConformidades.map(nc => (
+                    <div key={nc.id} className="bg-red-50 border border-red-200 rounded-xl p-3 space-y-1">
+                      <p className="flex items-center gap-1.5 text-xs font-semibold text-red-700">
+                        <AlertTriangle size={12} /> {nc.rotulo} — {nc.valor}{nc.unidade ? ` ${nc.unidade}` : ""}
+                        {nc.faixaEsperada && <span className="font-normal text-red-500">(esperado: {nc.faixaEsperada})</span>}
+                      </p>
+                      <p className="text-xs text-gray-600">{nc.justificativa}</p>
+                      <p className="text-[10px] text-gray-400">{nc.autorNome} · {formatarData(nc.criadoEm)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {os.veiculo && (
@@ -458,9 +533,26 @@ function OsDetalheModal({ os, aberto, onFechar, empresaId, eGestor, onAvaliar })
               </div>
             )}
 
+            {fotosObservacao.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Observações do gestor
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {fotosObservacao.map((url, i) => (
+                    <img key={i} src={url} alt={`Observação ${i + 1}`}
+                      onClick={() => setFotoAmpliada(url)}
+                      className="w-20 h-20 object-cover rounded-xl border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity" />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {os.assinatura && (
               <div>
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Assinatura</p>
+                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Assinatura {os.assinaturaClienteNome && `· ${os.assinaturaClienteNome}`}
+                </p>
                 <img src={os.assinatura} alt="Assinatura"
                   className="w-full max-h-28 object-contain border border-gray-200 rounded-xl bg-gray-50" />
               </div>
