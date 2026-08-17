@@ -6,7 +6,6 @@ import { uploadParaCaminho } from "../../services/storage/uploadFotos";
 import { criarFotoOS, listarFotosOS, removerFotoOS } from "../../services/os/osFotoService";
 import { enfileirarFoto, listarPendentesDaOS, sincronizarPendentes } from "../../services/offline/fotoSyncManager";
 import { removerPendente } from "../../services/offline/fotoQueueDB";
-import { iniciarUploadEmAndamento, finalizarUploadEmAndamento } from "../../services/offline/uploadGuard";
 import VisualizadorFoto from "./VisualizadorFoto";
 
 const CATEGORIAS = [
@@ -116,45 +115,37 @@ export default function FotoCapturaOS({
     if (!arquivos.length) return;
 
     setEnviandoCategoria(categoria);
-    // Do momento em que o arquivo existe só na memória do JS até ele estar
-    // seguro (no Storage ou na fila offline em IndexedDB) não pode rolar
-    // reload de atualização de versão — veja uploadGuard.js.
-    iniciarUploadEmAndamento();
-    try {
-      const geolocalizacao = await obterGeolocalizacao();
+    const geolocalizacao = await obterGeolocalizacao();
 
-      for (const arquivo of arquivos) {
-        let blobComprimido;
-        try {
-          blobComprimido = await comprimirComTimeout(arquivo);
-        } catch (err) {
-          console.warn("Compressão falhou/expirou, enviando original:", err.message);
-          blobComprimido = arquivo;
-        }
+    for (const arquivo of arquivos) {
+      let blobComprimido;
+      try {
+        blobComprimido = await comprimirComTimeout(arquivo);
+      } catch (err) {
+        console.warn("Compressão falhou/expirou, enviando original:", err.message);
+        blobComprimido = arquivo;
+      }
 
-        const dados = {
-          empresaId, osId, categoria, blob: blobComprimido, nomeArquivo: arquivo.name,
-          autorId, autorNome, origem, geolocalizacao, equipamentoId,
-        };
+      const dados = {
+        empresaId, osId, categoria, blob: blobComprimido, nomeArquivo: arquivo.name,
+        autorId, autorNome, origem, geolocalizacao, equipamentoId,
+      };
 
-        try {
-          await enviarDireto(dados);
-          toast.success("Foto enviada.");
-        } catch (err) {
-          console.warn("Upload direto falhou, enfileirando offline:", err.message);
-          await enfileirarFoto(dados);
-          if (navigator.onLine) {
-            toast.warning(`Não consegui enviar agora (${err.message}). A foto foi salva no dispositivo e será tentada de novo automaticamente.`);
-          } else {
-            toast.info("Sem conexão — foto salva no dispositivo e será enviada automaticamente ao reconectar.");
-          }
+      try {
+        await enviarDireto(dados);
+        toast.success("Foto enviada.");
+      } catch (err) {
+        console.warn("Upload direto falhou, enfileirando offline:", err.message);
+        await enfileirarFoto(dados);
+        if (navigator.onLine) {
+          toast.warning(`Não consegui enviar agora (${err.message}). A foto foi salva no dispositivo e será tentada de novo automaticamente.`);
+        } else {
+          toast.info("Sem conexão — foto salva no dispositivo e será enviada automaticamente ao reconectar.");
         }
       }
-    } finally {
-      finalizarUploadEmAndamento();
-      setEnviandoCategoria(null);
     }
 
+    setEnviandoCategoria(null);
     await carregar();
   }
 
