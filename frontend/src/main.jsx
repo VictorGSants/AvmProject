@@ -6,14 +6,19 @@ import RouterApp from "./routes/routes.jsx";
 import ContratoProvider from "./context/ContratoContext.jsx";
 import { registerSW } from "virtual:pwa-register";
 import { iniciarVerificacaoDeVersao } from "./services/versionCheck";
+import { aoFicarLivre } from "./services/offline/uploadGuard";
 
 // O app fica instalado e aberto por horas nos celulares dos técnicos, então o
 // navegador não checa sozinho se saiu uma versão nova. Aqui forçamos a checagem
-// periodicamente e sempre que o app volta a ficar em primeiro plano — ao achar
-// uma versão nova, o service worker (registerType: autoUpdate) já recarrega a
-// página sozinho.
-registerSW({
+// periodicamente e sempre que o app volta a ficar em primeiro plano. Ao achar
+// uma versão nova o reload só acontece via aoFicarLivre — nunca no meio de uma
+// foto sendo capturada/enviada (é comum o "voltar a ficar em primeiro plano"
+// coincidir exatamente com o retorno da câmera nativa do celular).
+const updateSW = registerSW({
   immediate: true,
+  onNeedRefresh() {
+    aoFicarLivre(() => updateSW(true));
+  },
   onRegisteredSW(_swUrl, registration) {
     if (!registration) return;
     setInterval(() => registration.update(), 15 * 60 * 1000);
