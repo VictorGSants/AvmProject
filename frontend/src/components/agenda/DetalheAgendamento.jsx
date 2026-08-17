@@ -68,7 +68,9 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   const [osForm, setOsForm] = useState({ servicoExecutado: "", materiaisUtilizados: "" });
   const [erroOs, setErroOs] = useState("");
   const [salvando, setSalvando] = useState(false);
+  // eslint-disable-next-line no-unused-vars -- leitura fica sem uso enquanto a obrigatoriedade está desativada
   const [contagemFotosOS, setContagemFotosOS] = useState({ antes: 0, durante: 0, depois: 0 });
+  // eslint-disable-next-line no-unused-vars -- leitura fica sem uso enquanto a obrigatoriedade está desativada
   const [medicoesValidas, setMedicoesValidas] = useState(true);
   const [nomeCliente, setNomeCliente] = useState("");
 
@@ -237,21 +239,24 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   }
 
   function avancarParaAssinatura() {
-    if (!osForm.servicoExecutado.trim()) {
-      setErroOs("Descreva o serviço executado antes de continuar.");
-      return;
-    }
-    if (!medicoesValidas) {
-      setErroOs("Preencha as medições obrigatórias e justifique os valores fora da faixa antes de continuar.");
-      return;
-    }
-    const faltando = Object.entries(contagemFotosOS)
-      .filter(([, qtd]) => qtd < 1)
-      .map(([categoria]) => LABEL_CATEGORIA_FOTO[categoria]);
-    if (faltando.length > 0) {
-      setErroOs(`Adicione ao menos 1 foto de: ${faltando.join(", ")}.`);
-      return;
-    }
+    // Obrigatoriedades abaixo (descrição, medições/valores, fotos) temporariamente
+    // desativadas (2026-08-17) — ver firestore.rules pro ajuste correspondente
+    // do lado do servidor (a trava de contagemFotos foi relaxada junto).
+    // if (!osForm.servicoExecutado.trim()) {
+    //   setErroOs("Descreva o serviço executado antes de continuar.");
+    //   return;
+    // }
+    // if (!medicoesValidas) {
+    //   setErroOs("Preencha as medições obrigatórias e justifique os valores fora da faixa antes de continuar.");
+    //   return;
+    // }
+    // const faltando = Object.entries(contagemFotosOS)
+    //   .filter(([, qtd]) => qtd < 1)
+    //   .map(([categoria]) => LABEL_CATEGORIA_FOTO[categoria]);
+    // if (faltando.length > 0) {
+    //   setErroOs(`Adicione ao menos 1 foto de: ${faltando.join(", ")}.`);
+    //   return;
+    // }
     setErroOs("");
     setEtapa("assinatura");
   }
