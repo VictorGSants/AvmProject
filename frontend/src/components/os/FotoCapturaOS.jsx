@@ -66,12 +66,29 @@ export default function FotoCapturaOS({
   const [excluindo, setExcluindo] = useState(null);
   const [fotoAmpliada, setFotoAmpliada] = useState(null);
   const inputsRef = useRef({});
+  // Cada chamada de carregar() ganha um id crescente. Em sinal ruim de celular
+  // é comum a consulta disparada por uma foto mais antiga responder DEPOIS da
+  // consulta disparada pela foto seguinte — sem essa trava, a resposta atrasada
+  // sobrescreve o estado mais novo e a foto recém-enviada "some" da tela.
+  const cargaIdRef = useRef(0);
 
   const carregar = useCallback(async () => {
-    const [listaFotos, listaPendentes] = await Promise.all([
-      listarFotosOS(empresaId, osId),
-      listarPendentesDaOS(osId),
-    ]);
+    const idDestaCarga = ++cargaIdRef.current;
+    let listaFotos, listaPendentes;
+    try {
+      [listaFotos, listaPendentes] = await Promise.all([
+        listarFotosOS(empresaId, osId),
+        listarPendentesDaOS(osId),
+      ]);
+    } catch (err) {
+      console.warn("Falha ao carregar fotos da OS:", err.message);
+      if (idDestaCarga === cargaIdRef.current) {
+        toast.error(`Não consegui atualizar a lista de fotos (${err.message}).`);
+        setCarregando(false);
+      }
+      return;
+    }
+    if (idDestaCarga !== cargaIdRef.current) return; // resposta antiga — ignora
     setFotos(listaFotos);
     setPendentes(listaPendentes);
     setCarregando(false);
