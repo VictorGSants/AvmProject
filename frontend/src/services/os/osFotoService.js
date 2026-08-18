@@ -5,7 +5,8 @@ import {
 } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 
-const CATEGORIAS = ["antes", "durante", "depois"];
+// antes/durante/depois removidas (2026-08-17) — ficou um espaço só de fotos.
+const CATEGORIAS = ["geral"];
 
 // Cria o doc da foto e incrementa o contador da OS na mesma transação —
 // é o contagemFotos que a regra de segurança usa pra travar o encerramento

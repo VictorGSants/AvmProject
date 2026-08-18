@@ -8,10 +8,12 @@ import { enfileirarFoto, listarPendentesDaOS, sincronizarPendentes } from "../..
 import { removerPendente } from "../../services/offline/fotoQueueDB";
 import VisualizadorFoto from "./VisualizadorFoto";
 
+// Categorias antes/durante/depois removidas (2026-08-17) — virou um espaço
+// só de fotos, simplificação pedida porque a divisão em 3 tava confusa e
+// não ajudava em campo. Mantido como array de 1 item pra reaproveitar toda
+// a lógica de upload/fila offline/render que já existia por categoria.
 const CATEGORIAS = [
-  { chave: "antes",   rotulo: "Antes" },
-  { chave: "durante", rotulo: "Durante" },
-  { chave: "depois",  rotulo: "Depois" },
+  { chave: "geral", rotulo: "Fotos" },
 ];
 
 // useWebWorker ligado (2026-08-17): desligado rodava a compressão (canvas
@@ -62,7 +64,7 @@ async function enviarDireto({ empresaId, osId, categoria, blob, nomeArquivo, aut
 
 export default function FotoCapturaOS({
   empresaId, osId, autorId, autorNome, equipamentoId,
-  onContagemChange, somenteLeitura = false,
+  somenteLeitura = false,
 }) {
   const [fotos, setFotos] = useState([]);
   const [pendentes, setPendentes] = useState([]);
@@ -100,12 +102,6 @@ export default function FotoCapturaOS({
   }, [empresaId, osId]);
 
   useEffect(() => { carregar(); }, [carregar]);
-
-  useEffect(() => {
-    const contagem = { antes: 0, durante: 0, depois: 0 };
-    fotos.forEach(f => { if (contagem[f.categoria] !== undefined) contagem[f.categoria] += 1; });
-    onContagemChange?.(contagem);
-  }, [fotos, onContagemChange]);
 
   const tentarSincronizar = useCallback(async () => {
     const { total, sucesso } = await sincronizarPendentes(osId);

@@ -36,8 +36,6 @@ const LABEL_STATUS = {
   cancelado:    "Cancelado",
 };
 
-const LABEL_CATEGORIA_FOTO = { antes: "Antes", durante: "Durante", depois: "Depois" };
-
 function formatarData(ts) {
   return ts.toDate().toLocaleDateString("pt-BR", {
     weekday: "long", day: "2-digit", month: "long", year: "numeric",
@@ -68,8 +66,6 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   const [osForm, setOsForm] = useState({ servicoExecutado: "", materiaisUtilizados: "" });
   const [erroOs, setErroOs] = useState("");
   const [salvando, setSalvando] = useState(false);
-  // eslint-disable-next-line no-unused-vars -- leitura fica sem uso enquanto a obrigatoriedade está desativada
-  const [contagemFotosOS, setContagemFotosOS] = useState({ antes: 0, durante: 0, depois: 0 });
   // eslint-disable-next-line no-unused-vars -- leitura fica sem uso enquanto a obrigatoriedade está desativada
   const [medicoesValidas, setMedicoesValidas] = useState(true);
   const [nomeCliente, setNomeCliente] = useState("");
@@ -239,22 +235,15 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
   }
 
   function avancarParaAssinatura() {
-    // Obrigatoriedades abaixo (descrição, medições/valores, fotos) temporariamente
-    // desativadas (2026-08-17) — ver firestore.rules pro ajuste correspondente
-    // do lado do servidor (a trava de contagemFotos foi relaxada junto).
+    // Obrigatoriedades abaixo (descrição, medições/valores) temporariamente
+    // desativadas (2026-08-17) — a foto nunca mais foi obrigatória por
+    // categoria, já que virou um espaço só sem contagem mínima.
     // if (!osForm.servicoExecutado.trim()) {
     //   setErroOs("Descreva o serviço executado antes de continuar.");
     //   return;
     // }
     // if (!medicoesValidas) {
     //   setErroOs("Preencha as medições obrigatórias e justifique os valores fora da faixa antes de continuar.");
-    //   return;
-    // }
-    // const faltando = Object.entries(contagemFotosOS)
-    //   .filter(([, qtd]) => qtd < 1)
-    //   .map(([categoria]) => LABEL_CATEGORIA_FOTO[categoria]);
-    // if (faltando.length > 0) {
-    //   setErroOs(`Adicione ao menos 1 foto de: ${faltando.join(", ")}.`);
     //   return;
     // }
     setErroOs("");
@@ -404,7 +393,7 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
               </InfoLinha>
             )}
 
-            {/* Registro fotográfico da OS (antes/durante/depois) — técnico, durante o atendimento */}
+            {/* Registro fotográfico da OS — técnico, durante o atendimento */}
             {eTecnico && evento.status === "em_andamento" && evento.osId && (
               <div>
                 <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
@@ -415,7 +404,6 @@ export default function DetalheAgendamento({ evento, tecnicos, contratos = [], a
                   osId={evento.osId}
                   autorId={localStorage.getItem("usuarioId") || ""}
                   autorNome={localStorage.getItem("uid") || ""}
-                  onContagemChange={setContagemFotosOS}
                 />
               </div>
             )}
