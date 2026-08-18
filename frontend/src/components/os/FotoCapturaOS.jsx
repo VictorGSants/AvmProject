@@ -14,12 +14,17 @@ const CATEGORIAS = [
   { chave: "depois",  rotulo: "Depois" },
 ];
 
-// useWebWorker desligado: em alguns setups (Vite dev server, iOS Safari
-// mais antigo) o worker da lib nunca sobe nem falha — só fica pendurado
-// sem resolver nem rejeitar, travando a foto pra sempre.
+// useWebWorker ligado (2026-08-17): desligado rodava a compressão (canvas
+// pesado) na thread principal — em CPU fraca de celular isso trava a UI
+// inteira por tempo suficiente pra PARECER "carregando infinitamente" (no
+// PC, com CPU rápida, nunca dava pra notar). E pior: com a thread principal
+// travada o setTimeout do comprimirComTimeout também não disparava, então
+// nem a rede de segurança funcionava. Ligado, a compressão roda fora da
+// thread principal — se o worker realmente pendurar (o motivo original de
+// terem desligado), agora o timeout de baixo consegue disparar de verdade.
 // Tamanho reduzido pra encurtar o upload em sinal fraco (o cenário normal
 // de campo) — ainda dá evidência legível, só não é foto de alta resolução.
-const OPCOES_COMPRESSAO = { maxWidthOrHeight: 1280, maxSizeMB: 0.5, useWebWorker: false };
+const OPCOES_COMPRESSAO = { maxWidthOrHeight: 1280, maxSizeMB: 0.5, useWebWorker: true };
 const TIMEOUT_GEO_MS = 8000;
 const TIMEOUT_COMPRESSAO_MS = 15_000;
 
