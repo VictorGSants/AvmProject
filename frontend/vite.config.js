@@ -41,15 +41,13 @@ export default defineConfig({
         clientsClaim: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
-          {
-            // Firestore: tenta a rede primeiro, usa cache se offline
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firestore-cache',
-              networkTimeoutSeconds: 10,
-            },
-          },
+          // Firestore removido do cache do service worker (2026-08-17): o SDK
+          // do Firestore usa esse domínio pra um canal de long-polling em
+          // tempo real (WebChannel), não só GETs simples — um service worker
+          // interceptando isso quebra o canal e fica pendurado, causando
+          // "Carregando fotos..." infinito em produção (nunca acontecia no
+          // servidor local, onde o SW não fica ativo). O SDK do Firestore já
+          // faz seu próprio cache/retry offline, não precisa do workbox aqui.
           {
             // Firebase Storage (fotos): cache permanente após primeiro download
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com\/.*/i,
