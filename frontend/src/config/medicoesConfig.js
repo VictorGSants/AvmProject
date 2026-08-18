@@ -30,7 +30,6 @@ export const MEDICOES_CONFIG = {
     { chave: "correnteCompressor", rotulo: "Corrente do compressor",   unidade: "A",   tipo: "numero", obrigatorio: true },
     { chave: "tempInsuflamento",   rotulo: "Temp. insuflamento",       unidade: "°C",  tipo: "numero", faixaMin: 12, faixaMax: 18, obrigatorio: true },
     { chave: "estadoFiltros",      rotulo: "Estado dos filtros",       unidade: "",    tipo: "conforme", obrigatorio: true },
-    { chave: "indicioVazamento",   rotulo: "Indício de vazamento",     unidade: "",    tipo: "conforme", obrigatorio: true },
     { chave: "dreno",              rotulo: "Dreno",                    unidade: "",    tipo: "conforme", obrigatorio: true },
   ],
   corretiva: [
